@@ -125,13 +125,13 @@ const defaultData={
  activities:['Sistem dimulakan dengan data simulasi awal.'],
  recycleBin:[]
 };
-let state=structuredClone(defaultData), records=[], currentView='dashboard', busy=false, filters={search:'',house:'Semua'}, pendingDelete=null;
-state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:now()}];
-
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const uid=p=>p+Math.random().toString(36).slice(2,9);
 const now=()=>new Date().toISOString();
+
+let state=structuredClone(defaultData), records=[], currentView='dashboard', busy=false, filters={search:'',house:'Semua'}, pendingDelete=null;
+state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:now()}];
 function iconRefresh(){if(window.lucide) lucide.createIcons()}
 function toast(message,type='ok'){
  const el=document.createElement('div'); el.className=`toast rounded-xl border p-4 shadow-xl ${type==='error'?'border-red-200 bg-red-50 text-red-800':'border-emerald-200 bg-white text-slate-800'}`;
