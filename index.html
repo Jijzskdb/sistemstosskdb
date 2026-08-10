@@ -73,7 +73,8 @@
        </div>
       </div>
       <div class="flex items-center gap-2">
-       <label data-template-id="year-label" for="year-select" class="canva-text hidden font-bold text-slate-500 sm:block"></label> <select id="year-select" class="field !w-auto !py-2" aria-label="Tahun aktif"></select> <span id="sync-status" class="hidden rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 md:inline-flex">Memuat data…</span>
+       <label data-template-id="year-label" for="year-select" class="canva-text hidden font-bold text-slate-500 sm:block"></label> <select id="competition-select" class="field !w-auto !py-2 max-w-[240px]" aria-label="Kejohanan aktif"></select>
+       <select id="year-select" class="field !w-auto !py-2" aria-label="Tahun aktif"></select> <span id="sync-status" class="hidden rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 md:inline-flex">Memuat data…</span>
       </div>
      </div>
     </header>
@@ -99,7 +100,7 @@ const NAV=[
 let houses=['Merah','Biru','Hijau','Kuning'];
 let houseStyle={Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
 const defaultData={
- settings:{school:'SK Seri Gemilang',tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',activeYear:'2026',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
+ settings:{school:'SK Seri Gemilang',tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',activeYear:'2026',activeCompetitionId:'KJ-2026-001',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
  students:[
   {id:'s1',bib:'M001',name:'Muhammad Firdaus',gender:'Lelaki',className:'6 Gemilang',category:'L12TKB',house:'Merah',status:'Aktif'},
   {id:'s2',bib:'B001',name:'Adriana Sofia',gender:'Perempuan',className:'5 Cemerlang',category:'P12TKB',house:'Biru',status:'Aktif'},
@@ -125,6 +126,7 @@ const defaultData={
  recycleBin:[]
 };
 let state=structuredClone(defaultData), records=[], currentView='dashboard', busy=false, filters={search:'',house:'Semua'}, pendingDelete=null;
+state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:now()}];
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -152,7 +154,7 @@ function calc(){
  standing.sort((a,b)=>b.gold-a.gold||b.silver-a.silver||b.bronze-a.bronze||b.points-a.points);
  return {standing,active:new Set(regs.map(r=>r.studentId)),completed:state.events.filter(e=>e.status==='Selesai').length};
 }
-function pageHead(title,desc,actions=''){return `<div class="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p class="mb-1 text-xs font-extrabold uppercase tracking-[.18em] text-[#14718f]">STOS · ${esc(state.settings.activeYear)}</p><h2 class="font-['Fraunces'] text-3xl font-bold text-[#10243e]">${title}</h2><p class="mt-1 text-slate-500">${desc}</p></div><div class="flex flex-wrap gap-2">${actions}</div></div>`}
+function pageHead(title,desc,actions=''){return `<div class="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p class="mb-1 text-xs font-extrabold uppercase tracking-[.18em] text-[#14718f]">STOS · ${esc(state.settings.activeYear)} · ${esc(state.settings.tournament)}</p><h2 class="font-['Fraunces'] text-3xl font-bold text-[#10243e]">${title}</h2><p class="mt-1 text-slate-500">${desc}</p></div><div class="flex flex-wrap gap-2">${actions}</div></div>`}
 const action=(label,icon,act,kind='btn-soft')=>`<button type="button" data-action="${act}" class="btn ${kind}"><i data-lucide="${icon}" class="h-4 w-4"></i>${label}</button>`;
 function render(){
  const label=NAV.find(n=>n[0]===currentView)?.[2]||'Dashboard'; $('#view-title').textContent=label;
@@ -561,10 +563,39 @@ function renderRecords(){
  <section class="panel overflow-hidden">${miniGrid(allRecords.map(r=>[r.no,r.name,r.category,r.holder,r.value,r.year]),['No.','Acara','Kategori','Pemegang Rekod','Pencapaian','Tahun'])}</section>
  <section class="mt-6 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 p-7 text-[#3d2700]"><i data-lucide="sparkles" class="mb-3 h-8 w-8"></i><h3 class="font-['Fraunces'] text-2xl font-bold">${rb.length} rekod baharu musim ini</h3><p class="mt-2 max-w-xl">Rekod baharu (RB) dikesan secara automatik daripada borang hakim dan sejarah rekod sekolah boleh diuruskan di halaman Tetapan.</p></section>`;
 }
+
+function getCompetitionRecord(type, competitionId){
+ const r=records.find(x=>x.type===type && String(x.competition_id||'')===String(competitionId));
+ if(!r)return [];
+ try{return JSON.parse(r.data||'[]')}catch{return []}
+}
+function competitionSummary(c){
+ const students=getCompetitionRecord('students',c.id);
+ const events=getCompetitionRecord('events',c.id);
+ const registrations=getCompetitionRecord('registrations',c.id);
+ const results=getCompetitionRecord('results',c.id);
+ const medals={Emas:0,Perak:0,Gangsa:0};
+ results.forEach(r=>{if(r.medal&&medals[r.medal]!==undefined)medals[r.medal]++});
+ const points=results.reduce((sum,r)=>sum+(Number(r.points)||0),0);
+ return {id:c.id,name:c.name,year:c.year,status:c.status||'Aktif',students:students.length,events:events.length,registrations:registrations.length,results:results.length,gold:medals.Emas,silver:medals.Perak,bronze:medals.Gangsa,points};
+}
+function competitionComparisonTable(){
+ const list=(state.competitions||[]).map(competitionSummary).sort((a,b)=>String(a.year).localeCompare(String(b.year))||a.name.localeCompare(b.name));
+ if(!list.length)return '<p class="text-sm text-slate-500">Belum ada sejarah kejohanan.</p>';
+ return `<table class="data-table"><thead><tr><th>Kejohanan</th><th>Tahun</th><th>Peserta</th><th>Acara</th><th>Pendaftaran</th><th>Keputusan</th><th>Emas</th><th>Perak</th><th>Gangsa</th><th>Mata</th><th>Status</th></tr></thead><tbody>${list.map(x=>`<tr class="${x.id===state.settings.activeCompetitionId?'bg-amber-50':''}"><td class="font-semibold">${esc(x.name)}</td><td>${esc(x.year)}</td><td>${x.students}</td><td>${x.events}</td><td>${x.registrations}</td><td>${x.results}</td><td>${x.gold}</td><td>${x.silver}</td><td>${x.bronze}</td><td>${x.points}</td><td><span class="badge">${esc(x.status)}</span></td></tr>`).join('')}</tbody></table>`;
+}
+
 function renderAnalysis(){
  const c=calc(), max=Math.max(...c.standing.map(x=>x.gold+x.silver+x.bronze),1), totalPoints=Math.max(c.standing.reduce((a,x)=>a+x.points,0),1);
  const withP=state.students.filter(s=>c.active.has(s.id)), without=state.students.filter(s=>!c.active.has(s.id));
  return `${pageHead('Analisis','Audit penyertaan, prestasi rumah dan kemajuan kejohanan.',action('Cetak Analisis','printer','pdf-analysis','btn-primary')+action('Export Data','download','export-analysis'))}
+
+ <section class="panel mb-6 p-6">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+   <div><h3 class="font-extrabold">Perbandingan Antara Kejohanan</h3><p class="text-sm text-slate-500">Perbandingan sejarah merentas tahun dan jenis kejohanan berdasarkan data yang telah disimpan.</p></div>
+  </div>
+  <div class="mt-5 overflow-auto">${competitionComparisonTable()}</div>
+ </section>
  <div class="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
  <section class="panel p-6"><h3 class="mb-6 font-extrabold">Pecahan Pingat</h3><div class="flex h-56 items-end justify-around gap-4">${c.standing.map(r=>`<div class="flex h-full flex-1 flex-col items-center justify-end"><div class="flex w-full max-w-20 items-end justify-center gap-1"><span class="chart-bar w-1/3 rounded-t bg-[#e4aa36]" style="height:${Math.max(8,r.gold/max*180)}px"></span><span class="chart-bar w-1/3 rounded-t bg-slate-400" style="height:${Math.max(8,r.silver/max*180)}px"></span><span class="chart-bar w-1/3 rounded-t bg-orange-700" style="height:${Math.max(8,r.bronze/max*180)}px"></span></div><span class="mt-3 text-xs font-bold">${r.house}</span></div>`).join('')}</div></section>
  <section class="panel p-6"><h3 class="mb-5 font-extrabold">Agihan Mata</h3><div class="mx-auto aspect-square max-w-56 rounded-full" style="background:conic-gradient(${c.standing.map((r,i)=>`${houseStyle[r.house][0]} ${c.standing.slice(0,i).reduce((a,x)=>a+x.points,0)/totalPoints*100}% ${c.standing.slice(0,i+1).reduce((a,x)=>a+x.points,0)/totalPoints*100}%`).join(',')})"><div class="relative left-1/2 top-1/2 flex h-32 w-32 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-center"><b>${totalPoints}<br><span class="text-xs text-slate-400">Mata</span></b></div></div></section>
@@ -581,6 +612,29 @@ function renderSettings(){
  const activeHouseStyles = state.settings.houseStyles || {Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
  return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif dan skala mata.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
+ <section class="panel p-6 xl:col-span-2">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+   <div>
+    <h3 class="font-extrabold">Pengurusan Kejohanan</h3>
+    <p class="mt-1 text-sm text-slate-500">Satu sistem boleh menyimpan banyak kejohanan, termasuk beberapa kejohanan dalam tahun yang sama.</p>
+   </div>
+   <div class="flex flex-wrap gap-2">
+    <button type="button" data-action="new-competition" class="btn btn-primary text-xs"><i data-lucide="plus"></i> Kejohanan Baharu</button>
+    <button type="button" data-action="finish-competition" class="btn btn-soft text-xs"><i data-lucide="archive"></i> Tandakan Selesai</button>
+   </div>
+  </div>
+  <div class="mt-5 overflow-auto rounded-xl border border-slate-100">
+   <table class="data-table">
+    <thead><tr><th>ID</th><th>Kejohanan</th><th>Tahun</th><th>Status</th></tr></thead>
+    <tbody>
+     ${(state.competitions||[]).map(c=>`<tr class="${c.id===state.settings.activeCompetitionId?'bg-amber-50':''}">
+      <td class="font-mono text-xs">${esc(c.id)}</td><td class="font-semibold">${esc(c.name)}</td><td>${esc(c.year)}</td><td><span class="badge">${esc(c.status||'Aktif')}</span></td>
+     </tr>`).join('')}
+    </tbody>
+   </table>
+  </div>
+ </section>
+
  <section class="panel p-6"><h3 class="mb-5 font-extrabold">Sekolah & Kejohanan</h3><div class="space-y-4"><label><span class="mb-1 block font-bold">Nama Sekolah</span><input id="setting-school" class="field" value="${esc(state.settings.school)}"></label><label><span class="mb-1 block font-bold">Nama Kejohanan</span><input id="setting-tournament" class="field" value="${esc(state.settings.tournament)}"></label><label><span class="mb-1 block font-bold">Tahun Aktif</span><input id="setting-year" type="number" min="2020" max="2099" class="field" value="${state.settings.activeYear}"></label></div></section>
  <section class="panel p-6"><h3 class="mb-5 font-extrabold">Penjenamaan, Logo & Mata</h3>
  <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
@@ -827,6 +881,26 @@ async function handleAction(a,b){
  if(a==='tab-active'){$('#audit-table').innerHTML=auditTable(state.students.filter(s=>calc().active.has(s.id)),true);return}
  if(a==='tab-inactive'){$('#audit-table').innerHTML=auditTable(state.students.filter(s=>!calc().active.has(s.id)),false);return}
  if(a==='import-students'){$('#file-import').click();$('#file-import').onchange=importStudents;return}
+
+ if(a==='new-competition'){
+   const name=prompt('Nama kejohanan baharu:','Kejohanan Olahraga Tahunan');
+   if(!name)return;
+   const year=prompt('Tahun kejohanan:',String(new Date().getFullYear()));
+   if(!year)return;
+   const id='KJ-'+String(year).trim()+'-'+String((state.competitions||[]).filter(c=>String(c.year)===String(year)).length+1).padStart(3,'0');
+   const c={id,name:String(name).trim(),year:String(year).trim(),status:'Aktif',created_at:now()};
+   state.competitions.push(c);
+   state.settings={...state.settings,school:state.settings.school,tournament:c.name,activeYear:c.year,activeCompetitionId:c.id};
+   state.students=[];state.events=[];state.registrations=[];state.results=[];state.activities=[];state.recycleBin=[];
+   await saveTypes(['competitions','settings','students','events','registrations','results','activities','recycleBin']);
+   setupCompetitions();setupYears();render();toast('Kejohanan baharu berjaya dicipta.');
+   return;
+ }
+ if(a==='finish-competition'){
+   const c=state.competitions.find(x=>x.id===state.settings.activeCompetitionId);
+   if(c){c.status='Selesai';c.ended_at=now();await saveTypes(['competitions']);render();toast('Kejohanan ditandakan sebagai selesai.');}
+   return;
+ }
  if(a==='save-settings'){await saveSettings();return}
  if(a==='upload-logo-trigger'){$('#logo-file-input').click();$('#logo-file-input').onchange=handleLogoUpload;return}
  if(a==='remove-logo'){state.settings.logo=null;render();return}
@@ -1031,7 +1105,7 @@ async function importEvents(ev){
 }
 function exportExcel(kind){
   let data = [];
-  let filename = `SKSTOS_Laporan_${state.settings.activeYear}`;
+  let filename = `SKSTOS_${String(state.settings.tournament||'Kejohanan').replace(/[^a-z0-9_-]+/gi,'_')}_${state.settings.activeYear}`;
   
   if (kind === 'export-events') {
     filename = `Master_Acara_${state.settings.activeYear}`;
@@ -1563,8 +1637,8 @@ async function saveSettings(){
  // Keep uploaded branding in the settings dataset so it persists in the Google Sheets.
  state.settings.logo = state.settings.logo || null;
 
- if(year!==state.settings.activeYear){if(!state.settings.years.includes(year))state.settings.years.unshift(year);state.settings.activeYear=year;state.students=[];state.events=[];state.registrations=[];state.results=[]}
- await saveTypes(['settings','students','events','registrations','results']);setupYears();
+ state.settings.activeYear=String(year); const activeComp=getActiveCompetition(); if(activeComp){activeComp.year=String(year);activeComp.name=state.settings.tournament;}
+ await saveTypes(['competitions','settings','students','events','registrations','results']);setupCompetitions();setupYears();
  const schoolLabel = $('[data-template-id="school-name"]');
  if (schoolLabel) { schoolLabel.textContent = state.settings.school; schoolLabel.innerHTML = esc(state.settings.school); }
  render();
@@ -1603,113 +1677,103 @@ async function apiPost(payload) {
   return json;
 }
 
+
+function defaultCompetitionId(year){return `KJ-${year}-001`;}
+function normalizeRecords(data){
+ return (Array.isArray(data)?data:[]).map(r=>({...r,competition_id:r.competition_id || defaultCompetitionId(r.year)}));
+}
+function getActiveCompetition(){
+ return (state.competitions||[]).find(c=>c.id===state.settings.activeCompetitionId) || state.competitions?.[0];
+}
+function loadCompetitionIntoState(){
+ const c=getActiveCompetition();
+ if(!c)return;
+ state.settings.activeCompetitionId=c.id;
+ state.settings.activeYear=String(c.year);
+ const cid=c.id;
+ const settingsRec=records.find(r=>r.type==='settings' && r.competition_id===cid);
+ if(settingsRec){
+   try{state.settings=JSON.parse(settingsRec.data);state.settings.activeCompetitionId=cid;state.settings.activeYear=String(c.year);}
+   catch(e){console.error('Gagal parse settings:',e);}
+ }
+ else{
+   state.settings={...state.settings,activeCompetitionId:cid,activeYear:String(c.year),tournament:c.name};
+   state.students=[];state.events=[];state.registrations=[];state.results=[];state.activities=[];state.recycleBin=[];
+ }
+ ['students','events','registrations','results'].forEach(type=>{
+   const r=records.find(x=>x.type===type && x.competition_id===cid);
+   if(r){try{state[type]=JSON.parse(r.data)}catch{state[type]=[]}}else state[type]=[];
+ });
+ ['activities','recycleBin'].forEach(type=>{
+   const r=records.find(x=>x.type===type && x.competition_id===cid);
+   if(r){try{state[type]=JSON.parse(r.data)}catch{state[type]=[]}}else state[type]=[];
+ });
+ if(state.settings.houses)houses=state.settings.houses;
+ if(state.settings.houseStyles)houseStyle=state.settings.houseStyles;
+}
 function applyRemoteRecords(data) {
-  records = Array.isArray(data) ? data : [];
+ records=normalizeRecords(data);
 
-  const activeYear = state.settings.activeYear;
-  const settingsRec =
-    records.find(r => r.type === 'settings' && String(r.year) === String(activeYear)) ||
-    records.find(r => r.type === 'settings');
-
-  if (settingsRec) {
-    try {
-      state.settings = JSON.parse(settingsRec.data);
-      if (state.settings.houses) houses = state.settings.houses;
-      if (state.settings.houseStyles) houseStyle = state.settings.houseStyles;
-    } catch (e) {
-      console.error('Gagal parse settings:', e);
-    }
-  } else {
-    state.students = [];
-    state.events = [];
-    state.registrations = [];
-    state.results = [];
-    state.activities = [];
-    state.recycleBin = [];
-  }
-
-  ['students','events','registrations','results'].forEach(type => {
-    const r = records.find(
-      x => x.type === type && String(x.year) === String(state.settings.activeYear)
-    );
-    if (r) {
-      try { state[type] = JSON.parse(r.data); }
-      catch (e) { console.error(`Gagal parse ${type}:`, e); state[type] = []; }
-    } else {
-      state[type] = [];
-    }
-  });
-
-  const activityRec = records.find(
-    x => x.type === 'activities' && String(x.year) === String(state.settings.activeYear)
-  );
-  if (activityRec) {
-    try { state.activities = JSON.parse(activityRec.data); } catch { state.activities = []; }
-  }
-
-  const recycleRec = records.find(
-    x => x.type === 'recycleBin' && String(x.year) === String(state.settings.activeYear)
-  );
-  if (recycleRec) {
-    try { state.recycleBin = JSON.parse(recycleRec.data); } catch { state.recycleBin = []; }
-  }
-
-  setupYears();
-  updateLogos();
-  $('#sync-status').textContent = 'Google Sheets disambungkan';
-
-  const schoolLabel = $('[data-template-id="school-name"]');
-  if (schoolLabel && state.settings.school) {
-    schoolLabel.textContent = state.settings.school;
-    schoolLabel.innerHTML = esc(state.settings.school);
-  }
-
-  render();
+ const compRec=records.find(r=>r.type==='competitions' && String(r.year)==='ALL');
+ if(compRec){
+   try{state.competitions=JSON.parse(compRec.data)||[]}catch{state.competitions=[]}
+ } else {
+   const ids=[...new Set(records.filter(r=>r.type==='settings').map(r=>r.competition_id))];
+   state.competitions=ids.map((id,i)=>{
+     const r=records.find(x=>x.type==='settings'&&x.competition_id===id);
+     let s={};try{s=JSON.parse(r?.data||'{}')}catch{}
+     return {id,name:s.tournament||`Kejohanan ${r?.year||''}`,year:String(r?.year||'2026'),status:'Aktif'};
+   });
+ }
+ if(!state.competitions.length){
+   state.competitions=[{id:defaultCompetitionId('2026'),name:'Kejohanan Olahraga Tahunan',year:'2026',status:'Aktif',created_at:now()}];
+ }
+ if(!state.settings.activeCompetitionId || !state.competitions.some(c=>c.id===state.settings.activeCompetitionId)){
+   state.settings.activeCompetitionId=state.competitions[0].id;
+ }
+ loadCompetitionIntoState();
+ setupCompetitions();setupYears();updateLogos();
+ $('#sync-status').textContent='Google Sheets disambungkan';
+ const schoolLabel=$('[data-template-id="school-name"]');
+ if(schoolLabel&&state.settings.school){schoolLabel.textContent=state.settings.school;schoolLabel.innerHTML=esc(state.settings.school);}
+ render();
 }
 
 async function saveTypes(types){
-  if(busy)return false;
-  setBusy(true);
-
-  try{
-    for(const type of types){
-      const record = {
-        type,
-        year: state.settings.activeYear,
-        data: JSON.stringify(state[type]),
-        updated_at: now()
-      };
-
-      const existing = records.find(
-        r => r.type === type && String(r.year) === String(state.settings.activeYear)
-      );
-
-      if(existing){
-        record.id = existing.id;
-        record.created_at = existing.created_at || now();
-      } else {
-        record.created_at = now();
-      }
-
-      await apiPost({action:'upsert', record});
-    }
-
-    const fresh = await apiGet();
-    applyRemoteRecords(fresh);
-    toast('Perubahan disimpan ke Google Sheets.');
-    return true;
-  }catch(err){
-    console.error('SAVE ERROR:', err);
-    toast('Gagal menyimpan ke Google Sheets: ' + err.message, 'error');
-    return false;
-  }finally{
-    setBusy(false);
+ if(busy)return false;
+ setBusy(true);
+ try{
+  for(const type of types){
+   const isGlobal=type==='competitions';
+   const year=isGlobal?'ALL':state.settings.activeYear;
+   const competition_id=isGlobal?'GLOBAL':state.settings.activeCompetitionId;
+   const record={type,year,competition_id,data:JSON.stringify(state[type]??[]),updated_at:now()};
+   const existing=records.find(r=>r.type===type&&String(r.year)===String(year)&&String(r.competition_id||'')===String(competition_id));
+   if(existing){record.id=existing.id;record.created_at=existing.created_at||now();}
+   else record.created_at=now();
+   await apiPost({action:'upsert',record});
   }
+  const fresh=await apiGet();
+  applyRemoteRecords(fresh);
+  toast('Perubahan disimpan ke Google Sheets.');
+  return true;
+ }catch(err){
+  console.error('SAVE ERROR:',err);
+  toast('Gagal menyimpan ke Google Sheets: '+err.message,'error');
+  return false;
+ }finally{setBusy(false)}
 }
 
-function setupYears(){
- const ys=[...new Set([state.settings.activeYear,...state.settings.years])];$('#year-select').innerHTML=ys.map(y=>`<option ${y===state.settings.activeYear?'selected':''}>${y}</option>`).join('');
+function setupCompetitions(){
+ const el=$('#competition-select');if(!el)return;
+ const list=(state.competitions||[]).slice().sort((a,b)=>String(a.year).localeCompare(String(b.year))||a.name.localeCompare(b.name));
+ el.innerHTML=list.map(c=>`<option value="${esc(c.id)}" ${c.id===state.settings.activeCompetitionId?'selected':''}>${esc(c.year)} · ${esc(c.name)}${c.status==='Selesai'?' · ✓':''}</option>`).join('');
 }
+function setupYears(){
+ const years=[...new Set((state.competitions||[]).map(c=>String(c.year)))].sort();
+ $('#year-select').innerHTML=years.map(y=>`<option ${String(y)===String(state.settings.activeYear)?'selected':''}>${y}</option>`).join('');
+}
+
 function updateLogos(){
  const sidebarLogo=$('#sidebar-logo-container');
  const headerLogo=$('#header-logo-container');
@@ -1725,6 +1789,7 @@ function updateLogos(){
 
 async function init(){
   navInit();
+  setupCompetitions();
   setupYears();
   updateLogos();
   render();
@@ -1757,11 +1822,16 @@ $('#menu-btn').onclick=()=>{$('#sidebar').classList.toggle('mobile-open');$('#ov
 $('#overlay').onclick=()=>{$('#sidebar').classList.remove('mobile-open');$('#overlay').classList.remove('show')};
 $('#modal-close').onclick=closeModal;
 $('#modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
-$('#year-select').onchange=e=>{const y=e.target.value;if(y===state.settings.activeYear)return;const sr=records.find(r=>r.type==='settings'&&r.year===y);if(sr){try{
-  state.settings=JSON.parse(sr.data);
-  if (state.settings.houses) houses = state.settings.houses;
-  if (state.settings.houseStyles) houseStyle = state.settings.houseStyles;
-}catch{};['students','events','registrations','results'].forEach(type=>{const r=records.find(x=>x.type===type&&x.year===y);state[type]=r?JSON.parse(r.data):[]});currentView='archive';navInit();render()}};
+$('#competition-select').onchange=async e=>{
+ const id=e.target.value;if(!id||id===state.settings.activeCompetitionId)return;
+ state.settings.activeCompetitionId=id;
+ loadCompetitionIntoState();setupCompetitions();setupYears();currentView='dashboard';navInit();render();
+};
+$('#year-select').onchange=e=>{
+ const y=String(e.target.value);
+ const c=(state.competitions||[]).find(x=>String(x.year)===y);
+ if(c){state.settings.activeCompetitionId=c.id;loadCompetitionIntoState();setupCompetitions();setupYears();currentView='dashboard';navInit();render();}
+};
 init();
 </script>
  </body>
