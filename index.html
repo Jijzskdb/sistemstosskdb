@@ -1571,7 +1571,7 @@ async function saveSettings(){
 }
 function setBusy(on){busy=on;document.querySelectorAll('button').forEach(b=>b.disabled=on);$('#sync-status').textContent=on?'Menyimpan…':'Disimpan';$('#sync-status').className=`hidden rounded-full px-3 py-2 text-xs font-bold md:inline-flex ${on?'bg-amber-50 text-amber-700':'bg-emerald-50 text-emerald-700'}`}
 
-const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbyskxCngO_Ebzj582rrMJElulXdPTZKfCfkeDa4ITJ6DMdoABMVDjg1dAZaBLiZYD8H/exec';
+const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbxTr4C9fOjEz7aTuHLnjSTKEbDE-ej9Oc_7YYJh53K11Rb3_L1EfGJ8zYtvsMHEkSk_/exec';
 
 async function apiGet() {
   if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
@@ -1584,7 +1584,12 @@ async function apiGet() {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'Gagal membaca Google Sheets.');
-  return json.records || [];
+  return Array.isArray(json.records) ? json.records : [];
+}
+
+async function loadFromSheets(){
+  const records = await apiGet();
+  return Array.isArray(records) ? records : [];
 }
 
 async function apiPost(payload) {
