@@ -1668,13 +1668,16 @@ function showAuthMessage(message) {
   el.className = 'mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700';
 }
 
-function handleCredentialResponse(response) {
-  if (!response || !response.credential) { showAuthMessage('Google Sign-In tidak menghasilkan token yang sah.'); return; }
+async function handleCredentialResponse(response) {
+  if (!response || !response.credential) {
+    showAuthMessage('Google Sign-In tidak menghasilkan token yang sah.');
+    return;
+  }
+
   GOOGLE_ID_TOKEN = response.credential;
   sessionStorage.setItem('stos_google_id_token', GOOGLE_ID_TOKEN);
-  const gate = $('#auth-gate');
-  if (gate) gate.remove();
-  initAfterLogin();
+  showAuthMessage('Mengesahkan akaun Google dan menyemak STOS_USERS…');
+  await initAfterLogin();
 }
 
 function renderGoogleLogin() {
@@ -1693,7 +1696,16 @@ function clearGoogleSession() {
 async function apiGet() {
   if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) throw new Error('URL Google Apps Script belum ditetapkan.');
   if (!GOOGLE_ID_TOKEN) throw new Error('Sila log masuk Google terlebih dahulu.');
-  const res = await fetch(`${GOOGLE_SHEETS_API}?action=read&token=${encodeURIComponent(GOOGLE_ID_TOKEN)}&_=${Date.now()}`,{method:'GET',redirect:'follow',cache:'no-store'});
+
+  // Code.gs yang sudah dideploy membaca idToken melalui POST.
+  // Oleh itu READ juga dihantar sebagai POST, bukan GET.
+  const res = await fetch(GOOGLE_SHEETS_API, {
+    method:'POST',
+    redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({action:'read', idToken:GOOGLE_ID_TOKEN})
+  });
+
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'Gagal membaca Google Sheets.');
@@ -1703,7 +1715,15 @@ async function apiGet() {
 async function apiPost(payload) {
   if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) throw new Error('URL Google Apps Script belum ditetapkan.');
   if (!GOOGLE_ID_TOKEN) throw new Error('Sila log masuk Google terlebih dahulu.');
-  const res = await fetch(GOOGLE_SHEETS_API,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,token:GOOGLE_ID_TOKEN})});
+
+  // Nama medan mesti tepat: Code.gs menggunakan payload.idToken.
+  const res = await fetch(GOOGLE_SHEETS_API, {
+    method:'POST',
+    redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({...payload, idToken:GOOGLE_ID_TOKEN})
+  });
+
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'Gagal menyimpan ke Google Sheets.');
@@ -1831,21 +1851,16 @@ async function initAfterLogin(){
   if(bannerEl) bannerEl.src = state.settings.banner || '';
 
   try {
+    // Jangan buka dashboard dahulu. Code.gs mesti mengesahkan ID Token
+    // dan menyemak email + status AKTIF dalam STOS_USERS.
     const data = await apiGet();
     applyRemoteRecords(data);
+
+    const gate = $('#auth-gate');
+    if (gate) gate.remove();
   } catch (err) {
     console.error('LOAD ERROR:', err);
     clearGoogleSession();
-    $('#sync-status').textContent = 'Akses belum disahkan';
-    toast('Akses Google gagal disahkan: ' + err.message, 'error');
-    if (!$('#auth-gate')) {
-      const gate=document.createElement('div');
-      gate.id='auth-gate';
-      gate.className='fixed inset-0 z-[100] flex items-center justify-center bg-[#eef2f3] p-5';
-      gate.innerHTML='<div class="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl border border-slate-200"><div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e4aa36] text-[#09243b] font-extrabold text-xl">SK</div><p class="text-xs font-extrabold uppercase tracking-[.18em] text-[#14718f]">STOS · AKSES SELAMAT</p><h2 class="mt-2 text-3xl font-bold text-[#10243e]">Akses Ditolak</h2><p class="mt-2 text-sm leading-6 text-slate-500">'+esc(err.message || 'Akaun tidak dibenarkan.')+'</p><div id="google-signin" class="mt-6 flex justify-center min-h-10"></div></div>';
-      document.body.appendChild(gate);
-    }
-    renderGoogleLogin();
 
     state.students = [];
     state.events = [];
@@ -1853,8 +1868,12 @@ async function initAfterLogin(){
     state.results = [];
     state.activities = [];
     state.recycleBin = [];
+
+    $('#sync-status').textContent = 'Akses belum disahkan';
+    showAuthMessage('Akses ditolak: ' + String(err?.message || 'Akaun tidak dibenarkan.'));
     updateLogos();
     render();
+    renderGoogleLogin();
   }
 }
 
