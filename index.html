@@ -104,38 +104,39 @@
   </div>
   <script>
 const NAV=[
- ['dashboard','layout-dashboard','Dashboard'],['students','users','Master Murid'],['events','trophy','Master Acara'],
- ['draw','shuffle','Master Undian'],['registration','clipboard-plus','Pendaftaran Atlet'],['judges','clipboard-check','Borang Hakim'],
- ['winners','medal','Senarai Pemenang'],['standings','bar-chart-3','Kedudukan Pingat'],['records','award','Rekod Sekolah'],
- ['analysis','pie-chart','Analisis'],['settings','settings','Tetapan'],['archive','trash-2','Tong Kitar Semula']
+  ['dashboard','layout-dashboard','Dashboard'],['students','users','Master Murid'],['events','trophy','Master Acara'],
+  ['draw','shuffle','Master Undian'],['registration','clipboard-plus','Pendaftaran Atlet'],['judges','clipboard-check','Borang Hakim'],
+  ['winners','medal','Senarai Pemenang'],['standings','bar-chart-3','Kedudukan Pingat'],['records','award','Rekod Sekolah'],
+  ['analysis','pie-chart','Analisis'],['settings','settings','Tetapan'],['archive','trash-2','Tong Kitar Semula']
 ];
 let houses=['Merah','Biru','Hijau','Kuning'];
 let houseStyle={Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
+let registrationHouseFilter = houses[0]; // Rumah pilihan semasa untuk menu pendaftaran
 const defaultData={
- settings:{school:'SK Seri Gemilang',tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',activeYear:'2026',activeCompetitionId:'KJ-2026-001',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
- students:[
-  {id:'s1',bib:'M001',name:'Muhammad Firdaus',gender:'Lelaki',className:'6 Gemilang',category:'L12TKB',house:'Merah',status:'Aktif'},
-  {id:'s2',bib:'B001',name:'Adriana Sofia',gender:'Perempuan',className:'5 Cemerlang',category:'P12TKB',house:'Biru',status:'Aktif'},
-  {id:'s3',bib:'H001',name:'Chong Wei Han',gender:'Lelaki',className:'4 Bestari',category:'L9TKB',house:'Hijau',status:'Aktif'},
-  {id:'s4',bib:'K001',name:'Siti Aminah',gender:'Perempuan',className:'6 Gemilang',category:'P12TKB',house:'Kuning',status:'Aktif'}
- ],
- events:[
-  {id:'e1',no:'P01',name:'LOMPAT JAUH P9TKB',category:'P9TKB',type:'Padang',round:'Akhir',status:'Belum Mula',record:0,unit:'m'},
-  {id:'e2',no:'B09',name:'100M P9TKB',category:'P9TKB',type:'Balapan',round:'Akhir',status:'Belum Mula',record:0,unit:'s'},
-  {id:'e3',no:'R19',name:'4X100M P9TKB',category:'P9TKB',type:'Relay',round:'Akhir',status:'Belum Mula',record:0,unit:'s'},
-  {id:'e4',no:'MD26',name:'MERENTAS DESA P12TKB',category:'P12TKB',type:'Merentas Desa',round:'Akhir',status:'Belum Mula',record:0,unit:'s'}
- ],
- registrations:[
-  {id:'r1',studentId:'s1',eventId:'e4'},
-  {id:'r2',studentId:'s2',eventId:'e4'},
-  {id:'r3',studentId:'s4',eventId:'e4'}
- ],
- results:[
-  {id:'x1',eventId:'e4',studentId:'s1',value:14.22,rank:1,status:'SAH',medal:'Emas',points:10},
-  {id:'x2',eventId:'e4',studentId:'s2',value:15.05,rank:2,status:'SAH',medal:'Perak',points:9}
- ],
- activities:['Sistem dimulakan dengan data simulasi awal.'],
- recycleBin:[]
+  settings:{school:'SK Seri Gemilang',tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',activeYear:'2026',activeCompetitionId:'KJ-2026-001',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
+  students:[
+   {id:'s1',bib:'M001',name:'Muhammad Firdaus',gender:'Lelaki',className:'6 Gemilang',category:'L12TKB',house:'Merah',status:'Aktif'},
+   {id:'s2',bib:'B001',name:'Adriana Sofia',gender:'Perempuan',className:'5 Cemerlang',category:'P12TKB',house:'Biru',status:'Aktif'},
+   {id:'s3',bib:'H001',name:'Chong Wei Han',gender:'Lelaki',className:'4 Bestari',category:'L9TKB',house:'Hijau',status:'Aktif'},
+   {id:'s4',bib:'K001',name:'Siti Aminah',gender:'Perempuan',className:'6 Gemilang',category:'P12TKB',house:'Kuning',status:'Aktif'}
+  ],
+  events:[
+   {id:'e1',no:'P01',name:'LOMPAT JAUH P9TKB',category:'P9TKB',type:'Padang',round:'Akhir',status:'Belum Mula',record:0,unit:'m'},
+   {id:'e2',no:'B09',name:'100M P9TKB',category:'P9TKB',type:'Balapan',round:'Akhir',status:'Belum Mula',record:0,unit:'s'},
+   {id:'e3',no:'R19',name:'4X100M P9TKB',category:'P9TKB',type:'Relay',round:'Akhir',status:'Belum Mula',record:0,unit:'s'},
+   {id:'e4',no:'MD26',name:'MERENTAS DESA P12TKB',category:'P12TKB',type:'Merentas Desa',round:'Akhir',status:'Belum Mula',record:0,unit:'s'}
+  ],
+  registrations:[
+   {id:'r1',studentId:'s1',eventId:'e4'},
+   {id:'r2',studentId:'s2',eventId:'e4'},
+   {id:'r3',studentId:'s4',eventId:'e4'}
+  ],
+  results:[
+   {id:'x1',eventId:'e4',studentId:'s1',value:14.22,rank:1,status:'SAH',medal:'Emas',points:10},
+   {id:'x2',eventId:'e4',studentId:'s2',value:15.05,rank:2,status:'SAH',medal:'Perak',points:9}
+  ],
+  activities:['Sistem dimulakan dengan data simulasi awal.'],
+  recycleBin:[]
 };
 let state=structuredClone(defaultData), records=[], currentView='dashboard', busy=false, filters={search:'',house:'Semua'}, pendingDelete=null;
 state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:new Date().toISOString()}];
@@ -358,119 +359,105 @@ function createLaneDraw(e){
 function renderDraw(){
  return `${pageHead('Master Undian','Undian lorong rasmi menggunakan dua set rumah sukan; urutan ini digunakan oleh Borang Hakim.',action('Cetak Semua','printer','pdf-start','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>{
-   const p=laneParticipants(e);
-   if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${p.length} peserta</span></div><div class="flex flex-wrap gap-2">${p.map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
-   if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(p.map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Lorong','Bib','Atlet','Percubaan'])}</section>`;
-   if(e.type==='Relay'){
-     const relayRows=getRelayLanes(e);
-     const lanes=e.round==='Separuh Akhir'?3:6;
-     return `<section class="panel p-5">
-       <div class="mb-3 flex items-center justify-between">
-         <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong · Acara Berpasukan (Relay)</p></div>
-         <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
-       </div>
-       ${miniGrid(relayRows.map(r=>[
-         r.lane,
-         r.house,
-         r.athletes.length ? r.athletes.map(a=>`${a.bib} - ${a.name}`).join(', ') : 'Kosong'
-       ]),['Lorong','Rumah Sukan','Senarai Atlet / Pelari'])}
-     </section>`;
-   }
-   const lanes=e.round==='Separuh Akhir'?3:6;return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong · Urutan rasmi</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(Array.from({length:lanes},(_,i)=>[i+1,p[i]?.bib||'—',p[i]?.name||'Kosong',p[i]?.house||'—']),['Lorong','Bib','Atlet','Rumah'])}</section>`
+    const p=laneParticipants(e);
+    if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${p.length} peserta</span></div><div class="flex flex-wrap gap-2">${p.map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
+    if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(p.map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Lorong','Bib','Atlet','Percubaan'])}</section>`;
+    if(e.type==='Relay'){
+      const relayRows=getRelayLanes(e);
+      const lanes=e.round==='Separuh Akhir'?3:6;
+      return `<section class="panel p-5">
+        <div class="mb-3 flex items-center justify-between">
+          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong · Acara Berpasukan (Relay)</p></div>
+          <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
+        </div>
+        ${miniGrid(relayRows.map(r=>[
+          r.lane,
+          r.house,
+          r.athletes.length ? r.athletes.map(a=>`${a.bib} - ${a.name}`).join(', ') : 'Kosong'
+        ]),['Lorong','Rumah Sukan','Senarai Atlet / Pelari'])}
+      </section>`;
+    }
+    const lanes=e.round==='Separuh Akhir'?3:6;return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong · Urutan rasmi</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(Array.from({length:lanes},(_,i)=>[i+1,p[i]?.bib||'—',p[i]?.name||'Kosong',p[i]?.house||'—']),['Lorong','Bib','Atlet','Rumah'])}</section>`
  }).join('')}</div>`;
 }
 function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+
 function renderRegistration(){
   const active=new Set(state.registrations.map(r=>r.studentId));
-  const activeHouses = state.settings.houses || ['Merah','Biru','Hijau','Kuning'];
-  
-  const regMap = {};
-  state.events.forEach(e => {
-    regMap[e.id] = {};
-    activeHouses.forEach(h => {
-      regMap[e.id][h] = [];
+  const activeHouses = state.settings.houses || houses;
+  if(!activeHouses.includes(registrationHouseFilter)){
+    registrationHouseFilter = activeHouses[0];
+  }
+
+  const houseOptions = activeHouses.map(h => `<option value="${esc(h)}" ${registrationHouseFilter === h ? 'selected' : ''}>Rumah ${esc(h)}</option>`).join('');
+  const currentHouseStyle = houseStyle[registrationHouseFilter] || ['#334155', '#f1f5f9'];
+
+  const filteredEvents = state.events.filter(e => e.type !== 'Merentas Desa');
+
+  const rowsHtml = filteredEvents.map(e => {
+    const regs = state.registrations.filter(r => {
+      const student = state.students.find(s => s.id === r.studentId);
+      return r.eventId === e.id && student && student.house === registrationHouseFilter;
     });
-  });
 
-  state.registrations.forEach(r => {
-    const s = state.students.find(x => x.id === r.studentId);
-    if (s && regMap[r.eventId] && regMap[r.eventId][s.house]) {
-      regMap[r.eventId][s.house].push({ regId: r.id, student: s });
-    }
-  });
-
-  const headerCols = activeHouses.map(h => {
-    const style = houseStyle[h] || ['#334155', '#f1f5f9'];
-    return `<th class="text-center" style="min-width: 180px;">
-      <span class="badge" style="color:${style[0]};background:${style[1]}">${esc(h)}</span>
-    </th>`;
-  }).join('');
-
-  const rowsHtml = state.events.filter(e => e.type !== 'Merentas Desa').map(e => {
-    const houseCells = activeHouses.map(h => {
-      const regs = regMap[e.id][h] || [];
-      const slotsHtml = Array.from({length: e.type === 'Relay' ? 4 : 2}, (_, slotIdx) => {
-        const reg = regs[slotIdx];
-        if (reg) {
-          return `
-          <div class="group relative flex items-center justify-between gap-1 rounded-lg border border-slate-200 bg-white p-2 text-xs shadow-sm">
-            <div class="min-w-0 flex-1">
-              <p class="font-extrabold text-[#09243b] truncate">${esc(reg.student.name)}</p>
-              <p class="text-[10px] text-slate-500 font-bold">${reg.student.bib} · ${esc(reg.student.className)}</p>
-            </div>
-            <button type="button" data-action="remove-registration" data-reg-id="${reg.regId}" class="h-6 w-6 shrink-0 flex items-center justify-center rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors" title="Batal Pendaftaran">
-              <i data-lucide="x" class="h-3.5 w-3.5"></i>
-            </button>
-          </div>`;
-        } else {
-          return `
-          <button type="button" data-action="quick-register" data-event-id="${e.id}" data-house="${esc(h)}" class="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-50 py-3.5 text-xs font-semibold text-slate-400 hover:text-slate-600 hover:border-slate-400 transition-all">
-            <i data-lucide="plus" class="h-3.5 w-3.5"></i> Daftar Atlet
-          </button>`;
-        }
-      }).join('<div class="h-1.5"></div>');
-
-      return `<td class="p-3 bg-slate-50/30 border-r border-slate-100">${slotsHtml}</td>`;
-    }).join('');
+    const maxSlots = e.type === 'Relay' ? 4 : 2;
+    const slotsHtml = Array.from({length: maxSlots}, (_, slotIdx) => {
+      const reg = regs[slotIdx];
+      if (reg) {
+        const student = state.students.find(s => s.id === reg.studentId);
+        return `
+        <div class="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div class="min-w-0 flex-1">
+            <p class="font-extrabold text-[#09243b]">${esc(student?.name || 'Tidak dikenali')}</p>
+            <p class="text-xs text-slate-500 font-bold">${esc(student?.bib || '')} · Kelas: ${esc(student?.className || '')}</p>
+          </div>
+          <button type="button" data-action="remove-registration" data-reg-id="${reg.id}" class="btn btn-danger !p-2 text-xs" title="Batal Pendaftaran">
+            <i data-lucide="x" class="h-4 w-4"></i> Batal
+          </button>
+        </div>`;
+      } else {
+        return `
+        <button type="button" data-action="quick-register" data-event-id="${e.id}" data-house="${esc(registrationHouseFilter)}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 hover:bg-slate-100 py-3 px-4 text-xs font-bold text-slate-500 transition-all">
+          <i data-lucide="plus" class="h-4 w-4"></i> Tambah Atlet Slot ${slotIdx + 1}
+        </button>`;
+      }
+    }).join('<div class="h-2"></div>');
 
     return `
-    <tr class="border-b border-slate-100">
-      <td class="p-3 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]" style="min-width: 200px;">
-        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">${e.no}</span>
-        <b class="text-sm text-[#10243e] block leading-tight mt-0.5">${esc(e.name)}</b>
-        <div class="flex gap-1.5 mt-1.5">
-          <span class="badge bg-slate-100 text-slate-600">${e.category}</span>
-          <span class="badge bg-sky-50 text-sky-700">${e.type}</span>
+    <div class="panel p-5 mb-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-100">
+        <div>
+          <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">${esc(e.no)}</span>
+          <h4 class="text-base font-extrabold text-[#10243e]">${esc(e.name)}</h4>
         </div>
-      </td>
-      ${houseCells}
-    </tr>`;
+        <div class="flex gap-2">
+          <span class="badge bg-slate-100 text-slate-600">${esc(e.category)}</span>
+          <span class="badge bg-sky-50 text-sky-700">${esc(e.type)}</span>
+        </div>
+      </div>
+      <div class="grid gap-2 md:grid-cols-2">
+        ${slotsHtml}
+      </div>
+    </div>`;
   }).join('');
 
-  return `${pageHead('Pendaftaran Atlet','Daftarkan maksimum 2 atlet bagi setiap rumah sukan untuk setiap acara.',action('Daftar Atlet','clipboard-plus','register-athlete','btn-primary'))}
- <section class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
-  <b>Panduan:</b> Pilih slot kosong di bawah mengikut acara dan rumah sukan yang betul untuk mendaftarkan atlet dengan pantas. Had standard: 2 individu + 2 relay setiap murid.
+  return `${pageHead('Pendaftaran Atlet','Urus pendaftaran mengikut Rumah Sukan melalui paparan senarai yang fokus.',action('Daftar Atlet Pantas','clipboard-plus','register-athlete','btn-primary'))}
+ <section class="panel mb-6 p-5 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
+  <div class="flex items-center gap-3">
+    <span class="text-sm font-bold text-slate-700">Pilih Rumah Sukan:</span>
+    <select id="reg-house-dropdown" class="field !w-auto !py-2 font-bold" style="color: ${currentHouseStyle[0]}; background-color: ${currentHouseStyle[1]}">
+      ${houseOptions}
+    </select>
+  </div>
+  <div class="text-sm font-semibold text-slate-500">
+    <i data-lucide="info" class="inline h-4 w-4 text-[#146b8c] mr-1"></i> ${active.size} daripada ${state.students.length} murid aktif menyertai acara.
+  </div>
  </section>
- <section class="panel overflow-hidden">
-  <div class="table-wrap max-h-[600px] overflow-y-auto">
-    <table class="data-table min-w-full">
-      <thead class="sticky top-0 z-20 bg-slate-50 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-        <tr>
-          <th class="bg-slate-50 sticky left-0 z-30 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]" style="min-width: 200px;">Acara</th>
-          ${headerCols}
-        </tr>
-      </thead>
-      <tbody>
-        ${rowsHtml || '<tr><td colspan="100" class="p-10 text-center text-slate-500">Tiada acara didaftarkan dalam Master Acara. Sila tambah acara terlebih dahulu.</td></tr>'}
-      </tbody>
-    </table>
-  </div>
-  <div class="p-4 bg-slate-50 border-t border-slate-100 text-sm text-slate-500 font-semibold flex items-center gap-2">
-    <i data-lucide="info" class="h-4 w-4 text-[#146b8c]"></i>
-    ${active.size} daripada ${state.students.length} murid mempunyai sekurang-kurangnya satu penyertaan.
-  </div>
- </section>`;
+ <div>
+  ${rowsHtml || '<p class="p-10 text-center text-slate-500">Tiada acara didaftarkan dalam Master Acara.</p>'}
+ </div>`;
 }
+
 function renderJudges(){
  return `${pageHead('Borang Hakim','Masukkan masa, jarak, enam percubaan atau keputusan top 10.',action('Cetak Keputusan','file-check','pdf-results','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>`<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type}</p></div><div class="flex flex-wrap gap-2"><button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button><button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`).join('')}</div>`;
@@ -678,8 +665,8 @@ function auditTable(list,active){
 }
 function renderSettings(){
  const hist = state.settings.historicalRecords || [];
- const activeHouses = state.settings.houses || ['Merah','Biru','Hijau','Kuning'];
- const activeHouseStyles = state.settings.houseStyles || {Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
+ const activeHouses = state.settings.houses || houses;
+ const activeHouseStyles = state.settings.houseStyles || houseStyle;
  return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif dan skala mata.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
  <section class="panel p-6 xl:col-span-2">
@@ -698,7 +685,7 @@ function renderSettings(){
     <thead><tr><th>ID</th><th>Kejohanan</th><th>Tahun</th><th>Status</th></tr></thead>
     <tbody>
      ${(state.competitions||[]).map(c=>`<tr class="${c.id===state.settings.activeCompetitionId?'bg-amber-50':''}">
-      <td class="font-mono text-xs">${esc(c.id)}</td><td class="font-semibold">${esc(c.name)}</td><td>${esc(c.year)}</td><td><span class="badge">${esc(c.status||'Aktif')}</span></td>
+     <td class="font-mono text-xs">${esc(c.id)}</td><td class="font-semibold">${esc(c.name)}</td><td>${esc(c.year)}</td><td><span class="badge">${esc(c.status||'Aktif')}</span></td>
      </tr>`).join('')}
     </tbody>
    </table>
@@ -855,6 +842,13 @@ function bindView(){
  $('#view').onclick=e=>{const b=e.target.closest('[data-action]');if(!b)return;handleAction(b.dataset.action,b)};
  const s=$('#student-search');if(s)s.oninput=()=>{filters.search=s.value;render()};
  const h=$('#house-filter');if(h)h.onchange=()=>{filters.house=h.value;render()};
+ const regHouseSel=$('#reg-house-dropdown');
+ if(regHouseSel){
+   regHouseSel.onchange=e=>{
+     registrationHouseFilter=e.target.value;
+     render();
+   }
+ }
 }
 function getRowId(btn){return btn.closest('td')?.querySelector('.row-id')?.textContent}
 function openModal(title,html){$('#modal-title').textContent=title;$('#modal-body').innerHTML=html;$('#modal').classList.remove('hidden');$('#modal').classList.add('flex');iconRefresh()}
@@ -927,7 +921,7 @@ async function handleAction(a,b){
    return;
  }
  if(a==='import-events'){$('#event-file-import').click();$('#event-file-import').onchange=importEvents;return}
-  if(a==='register-athlete'){openRegistration();return}
+  if(a==='register-athlete'){openRegistration('', registrationHouseFilter);return}
  if(a==='quick-register'){
    const eventId = b.dataset.eventId;
    const house = b.dataset.house;
@@ -1066,23 +1060,24 @@ function bindEventForm(){
  $('#event-form').onsubmit=async ev=>{ev.preventDefault();const id=$('#ef-id').value,old=state.events.find(x=>x.id===id);const item={id:id||uid('e'),no:$('#ef-no').value,name:$('#ef-name').value,category:$('#ef-category').value,type:$('#ef-type').value,round:$('#ef-round').value,status:old?.status||'Belum Mula',record:old?.record||0,unit:old?.unit||'s'};if(old)Object.assign(old,item);else state.events.push(item);await saveTypes(['events']);closeModal();render()};
 }
 function openRegistration(preEventId = '', preHouse = ''){
- const filteredStudents = preHouse ? state.students.filter(s => s.house === preHouse) : state.students;
- const studentOptions = filteredStudents.map(s=>`<option value="${s.id}">${s.bib} · ${s.name} · ${s.house}</option>`).join('');
- const eventOptions = state.events.map(e=>`<option value="${e.id}" ${e.id === preEventId ? 'selected' : ''}>${e.no} · ${e.name} (${e.type})</option>`).join('');
+ const targetHouse = preHouse || registrationHouseFilter;
+ const filteredStudents = state.students.filter(s => s.house === targetHouse);
+ const studentOptions = filteredStudents.map(s=>`<option value="${s.id}">${s.bib} · ${s.name} · Rumah ${s.house}</option>`).join('');
+ const eventOptions = state.events.filter(e => e.type !== 'Merentas Desa').map(e=>`<option value="${e.id}" ${e.id === preEventId ? 'selected' : ''}>${e.no} · ${e.name} (${e.type})</option>`).join('');
  
- openModal('Daftar Atlet',`<form id="reg-form" class="space-y-4">
-   <label><span class="mb-1 block font-bold">Murid ${preHouse ? `(Rumah ${preHouse})` : ''}</span>
-     <select id="rf-student" class="field">
-       ${studentOptions || '<option value="">Tiada murid ditemui</option>'}
-     </select>
-   </label>
-   <label><span class="mb-1 block font-bold">Acara</span>
-     <select id="rf-event" class="field">
-       ${eventOptions}
-     </select>
-   </label>
-   <div id="reg-message" class="hidden rounded-xl p-3 text-sm"></div>
-   <button class="btn btn-primary w-full" type="submit" ${!studentOptions ? 'disabled' : ''}>Sahkan Pendaftaran</button>
+ openModal(`Daftar Atlet · Rumah ${targetHouse}`,`<form id="reg-form" class="space-y-4">
+    <label><span class="mb-1 block font-bold">Pilih Murid (Rumah ${targetHouse})</span>
+      <select id="rf-student" class="field">
+        ${studentOptions || '<option value="">Tiada murid ditemui untuk rumah ini</option>'}
+      </select>
+    </label>
+    <label><span class="mb-1 block font-bold">Pilih Acara</span>
+      <select id="rf-event" class="field">
+        ${eventOptions || '<option value="">Tiada acara tersedia</option>'}
+      </select>
+    </label>
+    <div id="reg-message" class="hidden rounded-xl p-3 text-sm"></div>
+    <button class="btn btn-primary w-full" type="submit" ${!studentOptions ? 'disabled' : ''}>Sahkan Pendaftaran</button>
 </form>`);
  
  $('#reg-form').onsubmit=async e=>{e.preventDefault();const studentId=$('#rf-student').value,eventId=$('#rf-event').value;if(!studentId||!eventId)return;const s=state.students.find(x=>x.id===studentId),ev=state.events.find(x=>x.id===eventId),regs=state.registrations.filter(r=>r.studentId===studentId);
