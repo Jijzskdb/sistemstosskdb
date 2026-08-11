@@ -100,7 +100,7 @@ const NAV=[
 let houses=['Merah','Biru','Hijau','Kuning'];
 let houseStyle={Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
 const defaultData={
- settings:{school:'SK Dogoton Pulau Banggi',tournament:'Kejohanan Olahraga Tahunan Kali Ke-22',activeYear:'2026',activeCompetitionId:'KJ-2026-001',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
+ settings:{school:'SK Seri Gemilang',tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',activeYear:'2026',activeCompetitionId:'KJ-2026-001',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
  students:[
   {id:'s1',bib:'M001',name:'Muhammad Firdaus',gender:'Lelaki',className:'6 Gemilang',category:'L12TKB',house:'Merah',status:'Aktif'},
   {id:'s2',bib:'B001',name:'Adriana Sofia',gender:'Perempuan',className:'5 Cemerlang',category:'P12TKB',house:'Biru',status:'Aktif'},
@@ -125,14 +125,13 @@ const defaultData={
  activities:['Sistem dimulakan dengan data simulasi awal.'],
  recycleBin:[]
 };
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const uid=p=>p+Math.random().toString(36).slice(2,9);
 const now=()=>new Date().toISOString();
 
 let state=structuredClone(defaultData), records=[], currentView='dashboard', busy=false, filters={search:'',house:'Semua'}, pendingDelete=null;
 state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:now()}];
-
-const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-const uid=p=>p+Math.random().toString(36).slice(2,9);
 function iconRefresh(){if(window.lucide) lucide.createIcons()}
 function toast(message,type='ok'){
  const el=document.createElement('div'); el.className=`toast rounded-xl border p-4 shadow-xl ${type==='error'?'border-red-200 bg-red-50 text-red-800':'border-emerald-200 bg-white text-slate-800'}`;
@@ -164,7 +163,7 @@ function render(){
 }
 function renderDashboard(){
  const c=calc(), total=state.students.length, completed=c.completed;
- return `${pageHead('Pusat Kawalan Kejohanan SKDB','Ringkasan langsung prestasi, penyertaan dan kemajuan acara.')}
+ return `${pageHead('Pusat Kawalan Kejohanan','Ringkasan langsung prestasi, penyertaan dan kemajuan acara.')}
  <section class="hero-image relative mb-6 overflow-hidden rounded-[28px] bg-[#09243b] text-white shadow-xl">
   <img data-template-id="dashboard-banner" id="dashboard-banner" loading="lazy" class="canva-image absolute inset-0 h-full w-full object-cover opacity-45">
   <div class="absolute inset-0 bg-gradient-to-r from-[#082238] via-[#082238cc] to-transparent"></div>
@@ -1648,28 +1647,17 @@ function setBusy(on){busy=on;document.querySelectorAll('button').forEach(b=>b.di
 
 const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbyskxCngO_Ebzj582rrMJElulXdPTZKfCfkeDa4ITJ6DMdoABMVDjg1dAZaBLiZYD8H/exec';
 
-// Sambungan GitHub Pages -> Google Apps Script menggunakan JSONP untuk GET
-// dan hidden form POST untuk elak masalah CORS / "Failed to fetch".
 async function apiGet() {
   if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
     throw new Error('URL Google Apps Script belum ditetapkan.');
   }
-
-  const res = await fetch(`${GOOGLE_SHEETS_API}?action=read&_=${Date.now()}`, {
+  const res = await fetch(`${GOOGLE_SHEETS_API}?action=read`, {
     method: 'GET',
-    redirect: 'follow',
-    credentials: 'include',
-    cache: 'no-store'
+    redirect: 'follow'
   });
-
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
   const json = await res.json();
-
-  if (!json.ok) {
-    throw new Error(json.error || 'Gagal membaca Google Sheets.');
-  }
-
+  if (!json.ok) throw new Error(json.error || 'Gagal membaca Google Sheets.');
   return json.records || [];
 }
 
@@ -1677,28 +1665,18 @@ async function apiPost(payload) {
   if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
     throw new Error('URL Google Apps Script belum ditetapkan.');
   }
-
   const res = await fetch(GOOGLE_SHEETS_API, {
     method: 'POST',
     redirect: 'follow',
-    credentials: 'include',
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
   });
-
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
   const json = await res.json();
-
-  if (!json.ok) {
-    throw new Error(json.error || 'Gagal menyimpan ke Google Sheets.');
-  }
-
+  if (!json.ok) throw new Error(json.error || 'Gagal menyimpan ke Google Sheets.');
   return json;
 }
+
 
 function defaultCompetitionId(year){return `KJ-${year}-001`;}
 function normalizeRecords(data){
