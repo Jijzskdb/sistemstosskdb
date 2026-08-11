@@ -100,7 +100,7 @@ const NAV=[
 let houses=['Merah','Biru','Hijau','Kuning'];
 let houseStyle={Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
 const defaultData={
- settings:{school:'SK Seri Gemilang',tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',activeYear:'2026',activeCompetitionId:'KJ-2026-001',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
+ settings:{school:'SK Dogoton Pulau Banggi',tournament:'Kejohanan Olahraga Tahunan Kali Ke-22',activeYear:'2026',activeCompetitionId:'KJ-2026-001',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
  students:[
   {id:'s1',bib:'M001',name:'Muhammad Firdaus',gender:'Lelaki',className:'6 Gemilang',category:'L12TKB',house:'Merah',status:'Aktif'},
   {id:'s2',bib:'B001',name:'Adriana Sofia',gender:'Perempuan',className:'5 Cemerlang',category:'P12TKB',house:'Biru',status:'Aktif'},
@@ -125,13 +125,13 @@ const defaultData={
  activities:['Sistem dimulakan dengan data simulasi awal.'],
  recycleBin:[]
 };
+let state=structuredClone(defaultData), records=[], currentView='dashboard', busy=false, filters={search:'',house:'Semua'}, pendingDelete=null;
+state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:now()}];
+
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const uid=p=>p+Math.random().toString(36).slice(2,9);
 const now=()=>new Date().toISOString();
-
-let state=structuredClone(defaultData), records=[], currentView='dashboard', busy=false, filters={search:'',house:'Semua'}, pendingDelete=null;
-state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:now()}];
 function iconRefresh(){if(window.lucide) lucide.createIcons()}
 function toast(message,type='ok'){
  const el=document.createElement('div'); el.className=`toast rounded-xl border p-4 shadow-xl ${type==='error'?'border-red-200 bg-red-50 text-red-800':'border-emerald-200 bg-white text-slate-800'}`;
@@ -163,7 +163,7 @@ function render(){
 }
 function renderDashboard(){
  const c=calc(), total=state.students.length, completed=c.completed;
- return `${pageHead('Pusat Kawalan Kejohanan','Ringkasan langsung prestasi, penyertaan dan kemajuan acara.')}
+ return `${pageHead('Pusat Kawalan Kejohanan SKDB','Ringkasan langsung prestasi, penyertaan dan kemajuan acara.')}
  <section class="hero-image relative mb-6 overflow-hidden rounded-[28px] bg-[#09243b] text-white shadow-xl">
   <img data-template-id="dashboard-banner" id="dashboard-banner" loading="lazy" class="canva-image absolute inset-0 h-full w-full object-cover opacity-45">
   <div class="absolute inset-0 bg-gradient-to-r from-[#082238] via-[#082238cc] to-transparent"></div>
@@ -1647,34 +1647,109 @@ function setBusy(on){busy=on;document.querySelectorAll('button').forEach(b=>b.di
 
 const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbyskxCngO_Ebzj582rrMJElulXdPTZKfCfkeDa4ITJ6DMdoABMVDjg1dAZaBLiZYD8H/exec';
 
-async function apiGet() {
-  if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
-    throw new Error('URL Google Apps Script belum ditetapkan.');
-  }
-  const res = await fetch(`${GOOGLE_SHEETS_API}?action=read`, {
-    method: 'GET',
-    redirect: 'follow'
+// Sambungan GitHub Pages -> Google Apps Script menggunakan JSONP untuk GET
+// dan hidden form POST untuk elak masalah CORS / "Failed to fetch".
+function apiGet() {
+  return new Promise((resolve, reject) => {
+    if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
+      reject(new Error('URL Google Apps Script belum ditetapkan.'));
+      return;
+    }
+
+    const callbackName = '__stos_jsonp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Masa sambungan ke Google Sheets tamat.'));
+    }, 20000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+      script.remove();
+    }
+
+    window[callbackName] = (json) => {
+      cleanup();
+      if (!json || !json.ok) {
+        reject(new Error(json?.error || 'Gagal membaca Google Sheets.'));
+        return;
+      }
+      resolve(json.records || []);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('Google Apps Script tidak dapat dicapai. Pastikan deployment Web App masih aktif.'));
+    };
+
+    script.src = `${GOOGLE_SHEETS_API}?action=read&callback=${encodeURIComponent(callbackName)}&_=${Date.now()}`;
+    document.head.appendChild(script);
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'Gagal membaca Google Sheets.');
-  return json.records || [];
 }
 
-async function apiPost(payload) {
-  if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
-    throw new Error('URL Google Apps Script belum ditetapkan.');
-  }
-  const res = await fetch(GOOGLE_SHEETS_API, {
-    method: 'POST',
-    redirect: 'follow',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
+function apiPost(payload) {
+  return new Promise((resolve, reject) => {
+    if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
+      reject(new Error('URL Google Apps Script belum ditetapkan.'));
+      return;
+    }
+
+    const frameName = '__stos_post_frame_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const iframe = document.createElement('iframe');
+    iframe.name = frameName;
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = GOOGLE_SHEETS_API;
+    form.target = frameName;
+    form.enctype = 'application/x-www-form-urlencoded';
+    form.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'payload';
+    input.value = JSON.stringify(payload);
+    form.appendChild(input);
+    document.body.appendChild(form);
+
+    let finished = false;
+    const cleanup = () => {
+      if (form.parentNode) form.parentNode.removeChild(form);
+      setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 300);
+    };
+
+    const failTimer = setTimeout(() => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      reject(new Error('Masa menyimpan ke Google Sheets tamat.'));
+    }, 30000);
+
+    // Elakkan onload awal iframe (about:blank) daripada dianggap sebagai
+    // respons POST. Tunggu sedikit sebelum memasang listener dan submit.
+    setTimeout(() => {
+      iframe.onload = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(failTimer);
+        cleanup();
+        resolve({ ok: true });
+      };
+
+      iframe.onerror = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(failTimer);
+        cleanup();
+        reject(new Error('Gagal menghantar data ke Google Sheets.'));
+      };
+
+      form.submit();
+    }, 100);
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'Gagal menyimpan ke Google Sheets.');
-  return json;
 }
 
 
