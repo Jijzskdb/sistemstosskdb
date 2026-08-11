@@ -330,33 +330,82 @@ function laneParticipants(e){
  if(current?.length)return current.map(id=>state.students.find(s=>s.id===id)).filter(Boolean);
  return eventRegs(e);
 }
-function getRelayLanes(e){
+
+function getEventHeats(e) {
   const lanes = getEventLanes(e);
   const regs = eventRegs(e);
-  const byHouse = {};
-  regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-  const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-  
-  let assignedHouses;
-  const current = state.settings.laneDraws?.[e.id];
-  if(current && Array.isArray(current)) {
-    assignedHouses = current;
-  } else {
-    assignedHouses = fairShuffle(activeHouses).slice(0, lanes);
-  }
-  
-  const rows = [];
-  for(let i=0; i<lanes; i++) {
-    const h = assignedHouses[i];
-    const athletes = h ? (byHouse[h] || []) : [];
-    rows.push({
-      lane: i + 1,
-      house: h || '—',
-      athletes: athletes
+  if (e.type === 'Relay') {
+    const byHouse = {};
+    regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
+    const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
+    
+    let assignedHousesGroups;
+    const current = state.settings.laneDraws?.[e.id];
+    if (current && Array.isArray(current) && Array.isArray(current[0])) {
+      assignedHousesGroups = current;
+    } else {
+      const shuffledHouses = fairShuffle(activeHouses);
+      assignedHousesGroups = [];
+      for (let i = 0; i < shuffledHouses.length; i += lanes) {
+        assignedHousesGroups.push(shuffledHouses.slice(i, i + lanes));
+      }
+      if(assignedHousesGroups.length === 0) assignedHousesGroups = [[]];
+    }
+    
+    return assignedHousesGroups.map((houseGroup, heatIdx) => {
+      const heatRows = [];
+      for (let i = 0; i < lanes; i++) {
+        const h = houseGroup[i];
+        const athletes = h ? (byHouse[h] || []) : [];
+        heatRows.push({
+          lane: i + 1,
+          house: h || '—',
+          athletes: athletes
+        });
+      }
+      return {
+        heatName: `Separuh Akhir ${heatIdx + 1}`,
+        rows: heatRows
+      };
+    });
+  } else if (e.type === 'Balapan') {
+    const current = state.settings.laneDraws?.[e.id];
+    let heatIdsGroups = [];
+    if (current && Array.isArray(current) && Array.isArray(current[0])) {
+      heatIdsGroups = current;
+    } else if (current && Array.isArray(current) && !Array.isArray(current[0])) {
+      heatIdsGroups = [current];
+    } else {
+      const shuffled = fairShuffle(regs);
+      heatIdsGroups = [];
+      for (let i = 0; i < shuffled.length; i += lanes) {
+        heatIdsGroups.push(shuffled.slice(i, i + lanes).map(s => s.id));
+      }
+      if(heatIdsGroups.length === 0) heatIdsGroups = [[]];
+    }
+    
+    return heatIdsGroups.map((heatIds, heatIdx) => {
+      const heatParticipants = heatIds.map(id => state.students.find(s => s.id === id)).filter(Boolean);
+      const heatRows = [];
+      for (let i = 0; i < lanes; i++) {
+        const s = heatParticipants[i];
+        heatRows.push({
+          lane: i + 1,
+          bib: s?.bib || '—',
+          name: s?.name || 'Kosong',
+          house: s?.house || '—',
+          studentId: s?.id
+        });
+      }
+      return {
+        heatName: `Separuh Akhir ${heatIdx + 1}`,
+        rows: heatRows
+      };
     });
   }
-  return rows;
+  return null;
 }
+
 function createLaneDraw(e){
   const lanes = getEventLanes(e);
   if(e.type === 'Relay') {
@@ -364,26 +413,35 @@ function createLaneDraw(e){
     const byHouse = {};
     regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
     const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-    const orderedHouses = fairShuffle(activeHouses).slice(0, lanes);
+    const shuffledHouses = fairShuffle(activeHouses);
+    const heatGroups = [];
+    for(let i=0; i<shuffledHouses.length; i+=lanes) {
+      heatGroups.push(shuffledHouses.slice(i, i+lanes));
+    }
+    if(heatGroups.length === 0) heatGroups.push([]);
     if(!state.settings.laneDraws) state.settings.laneDraws = {};
-    state.settings.laneDraws[e.id] = orderedHouses;
-    return orderedHouses;
+    state.settings.laneDraws[e.id] = heatGroups;
+    return heatGroups;
+  }
+  if(e.type === 'Balapan') {
+    const participants = eventRegs(e);
+    const shuffled = fairShuffle(participants);
+    const heatGroups = [];
+    for(let i=0; i<shuffled.length; i+=lanes) {
+      heatGroups.push(shuffled.slice(i, i+lanes).map(s => s.id));
+    }
+    if(heatGroups.length === 0) heatGroups.push([]);
+    if(!state.settings.laneDraws) state.settings.laneDraws = {};
+    state.settings.laneDraws[e.id] = heatGroups;
+    return heatGroups;
   }
   const participants=eventRegs(e);
-  let ordered;
-  if(e.type==='Padang') {
-    ordered=fairShuffle(participants);
-  } else {
-    const byHouse={}; participants.forEach(s=>(byHouse[s.house] ||= []).push(s));
-    const housesWithAthletes=Object.values(byHouse).filter(x=>x.length);
-    const set1=housesWithAthletes.map(x=>x[0]);
-    const set2=housesWithAthletes.map(x=>x[1]).filter(Boolean);
-    ordered=[...fairShuffle(set1),...fairShuffle(set2)].slice(0,lanes);
-  }
+  let ordered=fairShuffle(participants);
   if(!state.settings.laneDraws)state.settings.laneDraws={};
   state.settings.laneDraws[e.id]=ordered.map(s=>s.id);
   return ordered;
 }
+
 function renderDraw(){
  const lanesTrack = state.settings.maxTrackLanes ?? 6;
  const lanesLongTrack = state.settings.maxLongTrackLanes ?? 4;
@@ -393,21 +451,29 @@ function renderDraw(){
     const lanes = getEventLanes(e);
     if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${eventRegs(e).length} peserta</span></div><div class="flex flex-wrap gap-2">${eventRegs(e).map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
     if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
-    if(e.type==='Relay'){
-      const relayRows=getRelayLanes(e);
+    
+    if(e.type==='Relay' || e.type==='Balapan'){
+      const heats = getEventHeats(e);
       return `<section class="panel p-5">
         <div class="mb-3 flex items-center justify-between">
-          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong max · Acara Berpasukan (Relay)</p></div>
+          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong max · Auto-Siri Separuh Akhir</p></div>
           <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
         </div>
-        ${miniGrid(relayRows.map(r=>[
-          r.lane,
-          r.house,
-          r.athletes.length ? r.athletes.map(a=>`${a.bib} - ${a.name}`).join(', ') : 'Kosong'
-        ]),['Lorong','Rumah Sukan','Senarai Atlet / Pelari'])}
+        ${heats.map(heat=>`
+          <div class="mb-5 last:mb-0">
+            <h5 class="text-xs font-extrabold uppercase tracking-wider text-[#146b8c] mb-2 bg-sky-50 px-3 py-1.5 rounded-lg w-fit">${heat.heatName}</h5>
+            ${miniGrid(heat.rows.map(r=>{
+              if(e.type==='Relay'){
+                return [r.lane, r.house, r.athletes.length ? r.athletes.map(a=>`${a.bib} - ${a.name}`).join(', ') : 'Kosong'];
+              } else {
+                return [r.lane, r.bib, r.name, r.house];
+              }
+            }), e.type==='Relay'?['Lorong','Rumah Sukan','Senarai Atlet / Pelari']:['Lorong','Bib','Atlet','Rumah'])}
+          </div>
+        `).join('')}
       </section>`;
     }
-    return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong max (Had Spesifik) · Urutan rasmi</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(Array.from({length:lanes},(_,i)=>[i+1,laneParticipants(e)[i]?.bib||'—',laneParticipants(e)[i]?.name||'Kosong',laneParticipants(e)[i]?.house||'—']),['Lorong','Bib','Atlet','Rumah'])}</section>`;
+    return '';
  }).join('')}</div>`;
 }
 function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
@@ -493,19 +559,33 @@ function renderJudges(){
  <div class="grid gap-5">${state.events.map(e=>`<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type} · ${e.round}</p></div><div class="flex flex-wrap gap-2"><button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button><button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`).join('')}</div>`;
 }
 function judgePreview(e){
- const p=laneParticipants(e), rr=state.results.filter(r=>r.eventId===e.id);
+ const rr=state.results.filter(r=>r.eventId===e.id);
  const lanes = getEventLanes(e);
- if(e.type==='Padang')return miniGrid(p.map((s,i)=>[i+1,s.bib,s.name,rr.find(r=>r.studentId===s.id)?.value||'—','6 percubaan']),['Giliran','Bib','Atlet','Terbaik','Struktur']);
- if(e.type==='Merentas Desa')return miniGrid(Array.from({length:10},(_,i)=>[i+1,rr.find(r=>r.rank===i+1)?.studentId?state.students.find(s=>s.id===rr.find(r=>r.rank===i+1).studentId)?.bib:'—',10-i]),['Kedudukan','Bib','Mata']);
- if(e.type==='Relay'){
-   const relayRows=getRelayLanes(e);
-   return miniGrid(relayRows.map(r=>{
-     const repStudent=r.athletes[0];
-     const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
-     return [r.lane,r.house,r.athletes.map(a=>a.name).join(', '),res?.value||'—',res?.status||'—'];
-   }),['Lorong','Rumah Sukan','Atlet','Masa','Status']);
+ if(e.type==='Padang'){
+   const p=laneParticipants(e);
+   return miniGrid(p.map((s,i)=>[i+1,s.bib,s.name,rr.find(r=>r.studentId===s.id)?.value||'—','6 percubaan']),['Giliran','Bib','Atlet','Terbaik','Struktur']);
  }
- return miniGrid(Array.from({length:lanes},(_,i)=>{const s=p[i],r=s&&rr.find(x=>x.studentId===s.id);return[i+1,s?.bib||'—',s?.name||'Kosong',r?.value||'—',r?.status||'—']}),['Lorong','Bib','Atlet','Masa','Status']);
+ if(e.type==='Merentas Desa')return miniGrid(Array.from({length:10},(_,i)=>[i+1,rr.find(r=>r.rank===i+1)?.studentId?state.students.find(s=>s.id===rr.find(r=>r.rank===i+1).studentId)?.bib:'—',10-i]),['Kedudukan','Bib','Mata']);
+ 
+ if(e.type==='Relay' || e.type==='Balapan'){
+   const heats = getEventHeats(e);
+   return heats.map(heat=>`
+     <div class="mb-3 last:mb-0">
+       <h5 class="text-xs font-bold uppercase tracking-wider text-[#146b8c] mb-1.5">${heat.heatName}</h5>
+       ${miniGrid(heat.rows.map(r=>{
+         if(e.type==='Relay'){
+           const repStudent=r.athletes[0];
+           const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
+           return [r.lane, r.house, r.athletes.map(a=>a.name).join(', ')||'Kosong', res?.value||'—', res?.status||'—'];
+         } else {
+           const res=r.studentId?rr.find(x=>x.studentId===r.studentId):null;
+           return [r.lane, r.bib, r.name, res?.value||'—', res?.status||'—'];
+         }
+       }), e.type==='Relay'?['Lorong','Rumah Sukan','Atlet','Masa','Status']:['Lorong','Bib','Atlet','Masa','Status'])}
+     </div>
+   `).join('');
+ }
+ return '';
 }
 function renderWinners(){
  const rows=[...state.results].sort((a,b)=>(state.events.find(e=>e.id===a.eventId)?.no||'').localeCompare(state.events.find(e=>e.id===b.eventId)?.no||'')||a.rank-b.rank);
@@ -1175,28 +1255,40 @@ function openRegistration(preEventId = '', preHouse = ''){
    render();
  };
 }
+
 function openJudge(eventId){
  const e=state.events.find(x=>x.id===eventId);
  const lanes = getEventLanes(e);
+ 
  if(e.type==='Relay'){
-   const relayRows=getRelayLanes(e);
+   const heats = getEventHeats(e);
    const rr=state.results.filter(r=>r.eventId===eventId);
-   openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-3">${relayRows.map(r=>{
-     const repStudent=r.athletes[0];
-     const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
-     return `<div class="rounded-xl border p-3"><div class="mb-2 flex justify-between"><b>Lorong ${r.lane} · Rumah ${r.house}</b><span class="text-xs text-slate-400">${r.athletes.length} atlet</span></div><p class="text-xs text-slate-500 mb-2">Pelari: ${r.athletes.map(a=>a.name).join(', ')||'Tiada atlet'}</p><div class="grid grid-cols-2 gap-2"><input data-relay-house="${r.house}" type="number" step=".01" class="field" placeholder="Masa" value="${res?.value||''}"><select data-relay-status="${r.house}" class="field"><option ${res?.status==='SAH'?'selected':''}>SAH</option><option ${res?.status==='DNS'?'selected':''}>DNS</option><option ${res?.status==='DQ'?'selected':''}>DQ</option><option ${res?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
-   }).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Kedudukan</button></form>`);
+   openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-5">${heats.map(heat=>`
+     <div class="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+       <h4 class="font-extrabold text-[#146b8c] text-sm mb-3 uppercase tracking-wider">${heat.heatName}</h4>
+       <div class="space-y-3">
+         ${heat.rows.map(r=>{
+           const repStudent=r.athletes[0];
+           const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
+           return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>Lorong ${r.lane} · Rumah ${r.house}</b><span class="text-xs text-slate-400">${r.athletes.length} atlet</span></div><p class="text-xs text-slate-500 mb-2">Pelari: ${r.athletes.map(a=>a.name).join(', ')||'Tiada atlet'}</p><div class="grid grid-cols-2 gap-2"><input data-relay-house="${r.house}" type="number" step=".01" class="field" placeholder="Masa" value="${res?.value||''}"><select data-relay-status="${r.house}" class="field"><option ${res?.status==='SAH'?'selected':''}>SAH</option><option ${res?.status==='DNS'?'selected':''}>DNS</option><option ${res?.status==='DQ'?'selected':''}>DQ</option><option ${res?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
+         }).join('')}
+       </div>
+     </div>
+   `).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Kedudukan</button></form>`);
+   
    $('#judge-form').onsubmit=async ev=>{
      ev.preventDefault();
      let entries=[];
-     relayRows.forEach(r=>{
-       if(!r.athletes.length)return;
-       const valInput=$(`[data-relay-house="${r.house}"]`), statusInput=$(`[data-relay-status="${r.house}"]`);
-       const value=valInput?(+valInput.value||0):0;
-       const status=statusInput?statusInput.value:'SAH';
-       if(value>0&&status!=='DNS'&&status!=='DQ'){
-         entries.push({house:r.house,repStudent:r.athletes[0],value,status});
-       }
+     heats.forEach(heat=>{
+       heat.rows.forEach(r=>{
+         if(!r.athletes.length)return;
+         const valInput=$(`[data-relay-house="${r.house}"]`), statusInput=$(`[data-relay-status="${r.house}"]`);
+         const value=valInput?(+valInput.value||0):0;
+         const status=statusInput?statusInput.value:'SAH';
+         if(value>0&&status!=='DNS'&&status!=='DQ'){
+           entries.push({house:r.house,repStudent:r.athletes[0],value,status});
+         }
+       });
      });
      entries.sort((a,b)=>a.value-b.value);
      state.results=state.results.filter(r=>r.eventId!==eventId);
@@ -1213,9 +1305,56 @@ function openJudge(eventId){
    };
    return;
  }
+
+ if(e.type==='Balapan'){
+   const heats = getEventHeats(e);
+   const rr=state.results.filter(r=>r.eventId===eventId);
+   openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-5">${heats.map(heat=>`
+     <div class="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+       <h4 class="font-extrabold text-[#146b8c] text-sm mb-3 uppercase tracking-wider">${heat.heatName}</h4>
+       <div class="space-y-3">
+         ${heat.rows.map(r=>{
+           if(!r.studentId) return '';
+           const s=state.students.find(x=>x.id===r.studentId);
+           const rRes=s?rr.find(x=>x.studentId===s.id):null;
+           return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${r.lane}</span></div><div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="number" step=".01" class="field" placeholder="Masa" value="${rRes?.value||''}"><select data-status="${s.id}" class="field"><option ${rRes?.status==='SAH'?'selected':''}>SAH</option><option ${rRes?.status==='DNS'?'selected':''}>DNS</option><option ${rRes?.status==='DQ'?'selected':''}>DQ</option><option ${rRes?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
+         }).join('')}
+       </div>
+     </div>
+   `).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Kedudukan</button></form>`);
+   
+   $('#judge-form').onsubmit=async ev=>{
+     ev.preventDefault();
+     let participants = eventRegs(e);
+     let entries = participants.map(s=>{
+       const valInput = $(`[data-value="${s.id}"]`);
+       const statusInput = $(`[data-status="${s.id}"]`);
+       const value = valInput ? (+valInput.value || 0) : 0;
+       const status = statusInput ? statusInput.value : 'SAH';
+       return {s, value, status};
+     }).filter(x=>x.value>0 && x.status!=='DNS' && x.status!=='DQ' && x.status!=='Batal');
+     
+     entries.sort((a,b)=>a.value-b.value);
+     state.results=state.results.filter(r=>r.eventId!==eventId);
+     entries.forEach((x,i)=>{
+       const rank=i+1;
+       const medal=rank===1?'Emas':rank===2?'Perak':rank===3?'Gangsa':'';
+       const points=rank===1?5:rank===2?3:rank===3?1:0;
+       let status=x.status;
+       if(e.record && x.value<e.record) status='RB';
+       state.results.push({id:uid('x'),eventId,studentId:x.s.id,value:x.value,rank,status,medal,points});
+     });
+     e.status='Selesai';
+     await saveTypes(['results','events']);
+     closeModal();
+     render();
+   };
+   return;
+ }
+
  const p=laneParticipants(e), rr=state.results.filter(r=>r.eventId===eventId);
- openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-3">${p.slice(0, e.type==='Padang'? p.length : lanes).map((s,i)=>`<div class="rounded-xl border p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">${e.type==='Padang'?'6 percubaan':'Lorong '+(i+1)}</span></div>${e.type==='Padang'?`<div class="grid grid-cols-3 gap-2 md:grid-cols-6">${Array.from({length:6},(_,j)=>`<label><span class="text-xs">P${j+1}</span><input data-attempt="${s.id}" type="number" step=".01" class="field !p-2"></label>`).join('')}</div><label class="mt-2 block"><span class="text-xs">Status</span><select data-status="${s.id}" class="field"><option>SAH</option><option>DNS</option><option>DQ</option><option>Batal</option></select></label>`:`<div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="number" step=".01" class="field" placeholder="${e.type==='Merentas Desa'?'Kedudukan':'Masa'}"><select data-status="${s.id}" class="field"><option>SAH</option><option>DNS</option><option>DQ</option><option>RB</option></select></div>`}</div>`).join('')||'<p class="text-slate-500">Tiada peserta berdaftar.</p>'}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Kedudukan</button></form>`);
- $('#judge-form').onsubmit=async ev=>{ev.preventDefault();let entries=p.slice(0, e.type==='Padang'? p.length : lanes).map(s=>{let value;if(e.type==='Padang')value=Math.max(0,...[...document.querySelectorAll(`[data-attempt="${s.id}"]`)].map(x=>+x.value||0));else value=+$(`[data-value="${s.id}"]`).value||0;return {s,value,status:e.type==='Padang'?'SAH':$(`[data-status="${s.id}"]`).value}}).filter(x=>x.value>0&&x.status!=='DNS'&&x.status!=='DQ'&&x.status!=='Batal');
+ openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-3">${p.map((s,i)=>`<div class="rounded-xl border p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">${e.type==='Padang'?'6 percubaan':'Lorong '+(i+1)}</span></div>${e.type==='Padang'?`<div class="grid grid-cols-3 gap-2 md:grid-cols-6">${Array.from({length:6},(_,j)=>`<label><span class="text-xs">P${j+1}</span><input data-attempt="${s.id}" type="number" step=".01" class="field !p-2"></label>`).join('')}</div><label class="mt-2 block"><span class="text-xs">Status</span><select data-status="${s.id}" class="field"><option>SAH</option><option>DNS</option><option>DQ</option><option>Batal</option></select></label>`:`<div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="number" step=".01" class="field" placeholder="${e.type==='Merentas Desa'?'Kedudukan':'Masa'}"><select data-status="${s.id}" class="field"><option>SAH</option><option>DNS</option><option>DQ</option><option>RB</option></select></div>`}</div>`).join('')||'<p class="text-slate-500">Tiada peserta berdaftar.</p>'}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Kedudukan</button></form>`);
+ $('#judge-form').onsubmit=async ev=>{ev.preventDefault();let entries=p.map(s=>{let value;if(e.type==='Padang')value=Math.max(0,...[...document.querySelectorAll(`[data-attempt="${s.id}"]`)].map(x=>+x.value||0));else value=+$(`[data-value="${s.id}"]`).value||0;return {s,value,status:e.type==='Padang'?'SAH':$(`[data-status="${s.id}"]`).value}}).filter(x=>x.value>0&&x.status!=='DNS'&&x.status!=='DQ'&&x.status!=='Batal');
  entries.sort((a,b)=>e.type==='Padang'?b.value-a.value:a.value-b.value);
  state.results=state.results.filter(r=>r.eventId!==eventId);entries.forEach((x,i)=>{const rank=i+1,medal=rank===1?'Emas':rank===2?'Perak':rank===3?'Gangsa':'',points=e.type==='Merentas Desa'?(state.settings.crossPoints[i]||0):rank===1?5:rank===2?3:rank===3?1:0;let status=x.status;if(e.record&&((e.type==='Padang'&&x.value>e.record)||(e.type!=='Padang'&&x.value<e.record)))status='RB';state.results.push({id:uid('x'),eventId,studentId:x.s.id,value:x.value,rank,status,medal,points})});e.status='Selesai';await saveTypes(['results','events']);closeModal();render();};
 }
