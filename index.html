@@ -203,7 +203,6 @@ function standingTable(rows){return `<div class="table-wrap"><table class="data-
 function renderStudents() {
   let rows = state.students.filter(s => (filters.house === 'Semua' || s.house === filters.house) && (`${s.name} ${s.bib} ${s.className}`.toLowerCase().includes(filters.search.toLowerCase())));
   
-  // Calculate registration status summary for each student
   const studentsWithRegStats = rows.map(s => {
     const studentRegs = state.registrations.filter(r => r.studentId === s.id);
     const indCount = studentRegs.filter(r => {
@@ -221,7 +220,6 @@ function renderStudents() {
       return ev && ev.type === 'Merentas Desa';
     }).length;
 
-    // Check for "Borrowed" categories (where student's category differs from registered event's category)
     const borrowedCategories = [];
     studentRegs.forEach(r => {
       const ev = state.events.find(e => e.id === r.eventId);
@@ -326,7 +324,6 @@ function renderRegistration(){
   const active=new Set(state.registrations.map(r=>r.studentId));
   const activeHouses = state.settings.houses || ['Merah','Biru','Hijau','Kuning'];
   
-  // Create mapping of eventId -> house -> Array of athlete registrations (max 2)
   const regMap = {};
   state.events.forEach(e => {
     regMap[e.id] = {};
@@ -366,7 +363,6 @@ function renderRegistration(){
             </button>
           </div>`;
         } else {
-          // Empty slot, click to register
           return `
           <button type="button" data-action="quick-register" data-event-id="${e.id}" data-house="${esc(h)}" class="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-50 py-3.5 text-xs font-semibold text-slate-400 hover:text-slate-600 hover:border-slate-400 transition-all">
             <i data-lucide="plus" class="h-3.5 w-3.5"></i> Daftar Atlet
@@ -431,7 +427,6 @@ function renderWinners(){
 }
 function renderStandings(){
  const c=calc();
- // Calculate individual & team medals for each student
  const studentMedals = state.students.map(s => {
    const rr = state.results.filter(x => x.studentId === s.id);
    const individualResults = rr.filter(x => {
@@ -464,15 +459,13 @@ function renderStandings(){
    };
  });
 
- // Group by category & gender: Under 9 (Tahun 1,2,3 or explicitly marked) and Under 12 (Tahun 4,5,6)
- // Standard categorization based on Category code or class string
  const getCategoryGroup = (s) => {
    const cat = (s.category || '').toUpperCase();
    const cls = (s.className || '').toLowerCase();
    if (cat.includes('9') || cls.includes('1') || cls.includes('2') || cls.includes('3') || cat.includes('B9') || cat.includes('U9')) {
-     return 'B9'; // Bawah 9
+     return 'B9';
    }
-   return 'B12'; // Bawah 12 (default)
+   return 'B12';
  };
 
  const winnersList = studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0);
@@ -483,7 +476,6 @@ function renderStandings(){
      const sCat = getCategoryGroup(x.s);
      return sGender && sCat === catGroup;
    });
-   // Sort by individual gold first, then individual silver, individual bronze, then team gold, points
    candidates.sort((a,b) => {
      if(b.indGold !== a.indGold) return b.indGold - a.indGold;
      if(b.indSilver !== a.indSilver) return b.indSilver - a.indSilver;
@@ -519,7 +511,6 @@ function renderStandings(){
  <section class="panel mt-6 p-5">
   <h3 class="mb-4 font-extrabold text-lg text-[#10243e]">Anugerah Olahragawan & Olahragawati Cemerlang</h3>
   <div class="grid gap-4 md:grid-cols-2">
-    <!-- Kategori Bawah 9 -->
     <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-5">
       <h4 class="font-bold text-amber-800 text-sm mb-3 uppercase tracking-wider">KATEGORI BAWAH 9 TAHUN</h4>
       <div class="grid gap-3">
@@ -540,7 +531,6 @@ function renderStandings(){
       </div>
     </div>
 
-    <!-- Kategori Bawah 12 -->
     <div class="rounded-2xl border border-blue-200 bg-sky-50/50 p-5">
       <h4 class="font-bold text-blue-800 text-sm mb-3 uppercase tracking-wider">KATEGORI BAWAH 12 TAHUN</h4>
       <div class="grid gap-3">
@@ -1025,7 +1015,7 @@ function openRegistration(preEventId = '', preHouse = ''){
    </label>
    <div id="reg-message" class="hidden rounded-xl p-3 text-sm"></div>
    <button class="btn btn-primary w-full" type="submit" ${!studentOptions ? 'disabled' : ''}>Sahkan Pendaftaran</button>
- </form>`);
+</form>`);
  
  $('#reg-form').onsubmit=async e=>{e.preventDefault();const studentId=$('#rf-student').value,eventId=$('#rf-event').value;if(!studentId||!eventId)return;const s=state.students.find(x=>x.id===studentId),ev=state.events.find(x=>x.id===eventId),regs=state.registrations.filter(r=>r.studentId===studentId);
  let error='';if(state.registrations.some(r=>r.studentId===studentId&&r.eventId===eventId))error='Atlet telah didaftarkan untuk acara ini.';
@@ -1217,28 +1207,22 @@ function makePdfLegacy(kind){
   const doc = new jsPDF('p', 'mm', 'a4');
   const activeYear = state.settings.activeYear;
   
-  // Custom theme colors matching school brand
   const navyColor = [9, 36, 59];
   const goldColor = [228, 170, 54];
   
-  // Helper to draw clean header and background
   const drawHeader = (title) => {
-    // Top primary bar
     doc.setFillColor(...navyColor);
     doc.rect(0, 0, 210, 32, 'F');
     
-    // Accent line
     doc.setFillColor(...goldColor);
     doc.rect(0, 32, 210, 2, 'F');
     
-    // Draw School Logo if present
     if (state.settings.logo) {
       try {
         doc.addImage(state.settings.logo, 'PNG', 14, 4, 24, 24);
       } catch(e) {}
     }
     
-    // School Title and Subtitle text on dark navbar
     doc.setTextColor(255, 255, 255);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(16);
@@ -1248,19 +1232,16 @@ function makePdfLegacy(kind){
     doc.text(state.settings.school.toUpperCase(), state.settings.logo ? 42 : 14, 19);
     doc.text(state.settings.tournament, state.settings.logo ? 42 : 14, 24);
     
-    // Title of the specific report
     doc.setTextColor(...navyColor);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(14);
     doc.text(title, 14, 44);
     
-    // Date & Active Year info
     doc.setFontSize(9);
     doc.setFont('Helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
     doc.text(`Tahun Aktif: ${activeYear}   |   Tarikh Laporan: ${new Date().toLocaleDateString('ms-MY')}`, 14, 49);
     
-    // Content top line separator
     doc.setStrokeColor(226, 232, 240);
     doc.setLineWidth(0.5);
     doc.line(14, 52, 196, 52);
@@ -1270,7 +1251,6 @@ function makePdfLegacy(kind){
     drawHeader('SENARAI MASTER MURID & PENDAFTARAN');
     let y = 60;
     
-    // Table Header
     doc.setFillColor(241, 245, 249);
     doc.rect(14, y, 182, 8, 'F');
     doc.setFont('Helvetica', 'bold');
@@ -1292,7 +1272,6 @@ function makePdfLegacy(kind){
         doc.addPage();
         drawHeader('SENARAI MASTER MURID & PENDAFTARAN');
         y = 60;
-        // Reprint header row
         doc.setFillColor(241, 245, 249);
         doc.rect(14, y, 182, 8, 'F');
         doc.setFont('Helvetica', 'bold');
@@ -1316,7 +1295,6 @@ function makePdfLegacy(kind){
       doc.text(s.category, 150, y);
       doc.text(`${regsCount} Acara`, 172, y);
       
-      // Separator line
       doc.setStrokeColor(241, 245, 249);
       doc.line(14, y + 2.5, 196, y + 2.5);
       y += 7.5;
@@ -1598,7 +1576,6 @@ function makePdfLegacy(kind){
     });
     
   } else {
-    // Fallback general document
     drawHeader('LAPORAN RASMI KEJOHANAN');
     let y = 62;
     doc.setFontSize(10);
@@ -1612,7 +1589,6 @@ async function saveSettings(){
  const year=$('#setting-year').value,points=$('#setting-points').value.split(',').map(Number).filter(Number.isFinite).slice(0,10);
  state.settings.school=$('#setting-school').value.trim();state.settings.tournament=$('#setting-tournament').value.trim();state.settings.crossPoints=points.length===10?points:[10,9,8,7,6,5,4,3,2,1];
  
- // Save custom houses settings
  const savedHouses = [];
  const savedHouseStyles = {};
  document.querySelectorAll('#houses-tbody tr.house-row').forEach(tr => {
@@ -1631,7 +1607,6 @@ async function saveSettings(){
    houseStyle = savedHouseStyles;
  }
 
- // Save historical records from form state inputs
  const historicalRecords = [];
  document.querySelectorAll('#historical-tbody tr').forEach(tr => {
    const y = tr.querySelector('.hist-year')?.value.trim();
@@ -1645,8 +1620,6 @@ async function saveSettings(){
    }
  });
  state.settings.historicalRecords = historicalRecords;
-
- // Keep uploaded branding in the settings dataset so it persists in the Google Sheets.
  state.settings.logo = state.settings.logo || null;
 
  state.settings.activeYear=String(year); const activeComp=getActiveCompetition(); if(activeComp){activeComp.year=String(year);activeComp.name=state.settings.tournament;}
@@ -1657,7 +1630,7 @@ async function saveSettings(){
 }
 function setBusy(on){busy=on;document.querySelectorAll('button').forEach(b=>b.disabled=on);$('#sync-status').textContent=on?'Menyimpan…':'Disimpan';$('#sync-status').className=`hidden rounded-full px-3 py-2 text-xs font-bold md:inline-flex ${on?'bg-amber-50 text-amber-700':'bg-emerald-50 text-emerald-700'}`}
 
-const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbxTr4C9fOjEz7aTuHLnjSTKEbDE-ej9Oc_7YYJh53K11Rb3_L1EfGJ8zYtvsMHEkSk_/exec';
+const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbz1UbUAYdZSdroQGAsbsGbQi71iNT9s4vc0p3Ye1AWcgvgFNx-j5nSvJnPZCj5-vgzK/exec';
 const GOOGLE_CLIENT_ID = '49002389927-a24h4d464jtu385khpc5jf119c9iec8v.apps.googleusercontent.com';
 let GOOGLE_ID_TOKEN = sessionStorage.getItem('stos_google_id_token') || '';
 
@@ -1697,8 +1670,6 @@ async function apiGet() {
   if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) throw new Error('URL Google Apps Script belum ditetapkan.');
   if (!GOOGLE_ID_TOKEN) throw new Error('Sila log masuk Google terlebih dahulu.');
 
-  // Code.gs yang sudah dideploy membaca idToken melalui POST.
-  // Oleh itu READ juga dihantar sebagai POST, bukan GET.
   const res = await fetch(GOOGLE_SHEETS_API, {
     method:'POST',
     redirect:'follow',
@@ -1716,7 +1687,6 @@ async function apiPost(payload) {
   if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) throw new Error('URL Google Apps Script belum ditetapkan.');
   if (!GOOGLE_ID_TOKEN) throw new Error('Sila log masuk Google terlebih dahulu.');
 
-  // Nama medan mesti tepat: Code.gs menggunakan payload.idToken.
   const res = await fetch(GOOGLE_SHEETS_API, {
     method:'POST',
     redirect:'follow',
@@ -1851,8 +1821,6 @@ async function initAfterLogin(){
   if(bannerEl) bannerEl.src = state.settings.banner || '';
 
   try {
-    // Jangan buka dashboard dahulu. Code.gs mesti mengesahkan ID Token
-    // dan menyemak email + status AKTIF dalam STOS_USERS.
     const data = await apiGet();
     applyRemoteRecords(data);
 
