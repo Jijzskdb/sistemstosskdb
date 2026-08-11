@@ -1130,7 +1130,7 @@ function openJudge(eventId){
  }
  const p=eventRegs(e), rr=state.results.filter(r=>r.eventId===eventId);
  openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-3">${p.map((s,i)=>`<div class="rounded-xl border p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">${e.type==='Padang'?'6 percubaan':'Lorong '+(i+1)}</span></div>${e.type==='Padang'?`<div class="grid grid-cols-3 gap-2 md:grid-cols-6">${Array.from({length:6},(_,j)=>`<label><span class="text-xs">P${j+1}</span><input data-attempt="${s.id}" type="number" step=".01" class="field !p-2"></label>`).join('')}</div><label class="mt-2 block"><span class="text-xs">Status</span><select data-status="${s.id}" class="field"><option>SAH</option><option>DNS</option><option>DQ</option><option>Batal</option></select></label>`:`<div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="number" step=".01" class="field" placeholder="${e.type==='Merentas Desa'?'Kedudukan':'Masa'}"><select data-status="${s.id}" class="field"><option>SAH</option><option>DNS</option><option>DQ</option><option>RB</option></select></div>`}</div>`).join('')||'<p class="text-slate-500">Tiada peserta berdaftar.</p>'}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Kedudukan</button></form>`);
- $('#judge-form').onsubmit=async ev=>{ev.preventDefault();let entries=p.map(s=>{let value;if(e.type==='Padang')value=Math.max(0,...[...document.querySelectorAll(`[data-attempt="${s.id}"]`)].map(x=>+x.value||0));else value=+$(`[data-value="${s.id}"]`).value||0;return {s,value,status:e.type==='Padang'?'SAH':$(`[data-status="${s.id}"]`).value}}).filter(x=>x.value>0&&x.status!=='DNS'&&x.status!=='DQ'&&x.status!=='Batal');
+ $('#judge-form').onsubmit=async ev=>{ev.preventDefault();let entries=p.map(s=>{let value;if(e.type==='Padang')value=Math.max(0,...[...document.querySelectorAll(`[data-attempt="${s.id}"]`)].map(x=>+x.value||0));else value=+$(`[data-value="${s.id}"]`).value||0;return {s,value,status:e.type==='Padang'?'SAH':$(`[data-status="${s.id}"] സംസ്`}||$(`[data-status="${s.id}"]`).value}}).filter(x=>x.value>0&&x.status!=='DNS'&&x.status!=='DQ'&&x.status!=='Batal');
  entries.sort((a,b)=>e.type==='Padang'?b.value-a.value:a.value-b.value);
  state.results=state.results.filter(r=>r.eventId!==eventId);entries.forEach((x,i)=>{const rank=i+1,medal=rank===1?'Emas':rank===2?'Perak':rank===3?'Gangsa':'',points=e.type==='Merentas Desa'?(state.settings.crossPoints[i]||0):rank===1?5:rank===2?3:rank===3?1:0;let status=x.status;if(e.record&&((e.type==='Padang'&&x.value>e.record)||(e.type!=='Padang'&&x.value<e.record)))status='RB';state.results.push({id:uid('x'),eventId,studentId:x.s.id,value:x.value,rank,status,medal,points})});e.status='Selesai';await saveTypes(['results','events']);closeModal();render();};
 }
@@ -1276,7 +1276,21 @@ function makeJudgeFormPdf(e){
     : isRelay
       ? relayRows.map(r=>[r.lane, r.house, r.athletes[0]?.name||'', r.athletes[1]?.name||'', r.athletes[2]?.name||'', r.athletes[3]?.name||'', '', '', ''])
       : participants.map((s,i)=>[i+1,s.bib,s.name,s.house,'','','']);
-  const reportHTML = `<!doctype html><html><head><meta charset="utf-8"><title>Borang Hakim ${escPrint(e.no)}</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#10243e}header{background:#09243b;color:#fff;padding:18px 20px;border-bottom:3px solid #e4aa36}h1{font-size:18px;margin:0 0 7px}p{margin:3px 0;font-size:11px;color:#d8e4ea}table{width:100%;border-collapse:collapse;font-size:9px;margin-top:18px}th{background:#f1f5f9;color:#334155;text-align:left;padding:7px;border:1px solid #cbd5e1}td{height:32px;padding:7px;border:1px solid #cbd5e1;vertical-align:middle}</style></head><body><header><h1>STOS · BORANG HAKIM</h1><p>${escPrint(state.settings.school)}</p><p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)}</p></header><table><thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
+  
+  const logoImg = state.settings.logo 
+    ? `<img src="${state.settings.logo}" style="height: 42px; width: 42px; object-fit: cover; border-radius: 6px; background: white; padding: 2px;">` 
+    : '';
+
+  const reportHTML = `<!doctype html><html><head><meta charset="utf-8"><title>Borang Hakim ${escPrint(e.no)}</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#10243e}.pdf-header{display:flex;align-items:center;gap:14px;background:#09243b;color:#fff;padding:18px 20px;border-bottom:3px solid #e4aa36}h1{font-size:18px;margin:0 0 4px}p{margin:2px 0;font-size:11px;color:#d8e4ea}table{width:100%;border-collapse:collapse;font-size:9px;margin-top:18px}th{background:#f1f5f9;color:#334155;text-align:left;padding:7px;border:1px solid #cbd5e1}td{height:32px;padding:7px;border:1px solid #cbd5e1;vertical-align:middle}</style></head><body>
+  <div class="pdf-header">
+    ${logoImg}
+    <div>
+      <h1>STOS · BORANG HAKIM</h1>
+      <p>${escPrint(state.settings.school)}</p>
+      <p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)}</p>
+    </div>
+  </div>
+  <table><thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
   popup.document.write(reportHTML); popup.document.close();
   setTimeout(() => { popup.focus(); popup.print(); }, 400);
 }
@@ -1302,7 +1316,21 @@ function makePdf(kind){
   else if (kind === 'pdf-records') rows = [...state.results.filter(r=>r.status==='RB').map(r=>{const e=state.events.find(x=>x.id===r.eventId),s=state.students.find(x=>x.id===r.studentId);return [e?.no,e?.name,e?.category,s?.name,r.value+' '+(e?.unit||'s'),state.settings.activeYear]}),...(state.settings.historicalRecords||[]).map(r=>[r.no,r.name,r.category,r.holder,r.value,r.year])];
   else rows = state.events.flatMap(e => laneParticipants(e).map((s,i)=>[e.no,e.name,i+1,s.bib,s.name,s.house,'__________________']));
   const headers = kind==='pdf-students'?['BIB','NAMA MURID','KELAS','RUMAH','KATEGORI','ACARA']:kind==='pdf-events'?['NO','NAMA ACARA','KATEGORI','JENIS ACARA','PUSINGAN','STATUS']:kind==='pdf-results'?['ACARA','KED','BIB','PEMENANG','RUMAH','PENCAPAIAN','PINGAT']:kind==='pdf-records'?['NO ACARA','NAMA ACARA','KATEGORI','PEMEGANG REKOD','CATATAN','TAHUN']:kind==='pdf-start'?['ACARA','NAMA ACARA','NO','BIB','ATLET','RUMAH','CATATAN']:['KED.','RUMAH SUKAN','EMAS','PERAK','GANGSA','JUMLAH MATA'];
-  const reportHTML = `<!doctype html><html><head><meta charset="utf-8"><title>${escPrint(title)}</title><style>@page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;color:#10243e}header{background:#09243b;color:#fff;padding:18px 20px;border-bottom:3px solid #e4aa36}h1{font-size:18px;margin:0 0 7px}p{margin:3px 0;font-size:11px;color:#d8e4ea}h2{font-size:16px;margin:22px 0 8px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#f1f5f9;color:#334155;text-align:left;padding:7px;border-bottom:1px solid #cbd5e1}td{padding:7px;border-bottom:1px solid #e2e8f0;vertical-align:top}tr:nth-child(even){background:#fafcfc}</style></head><body><header><h1>STOS</h1><p>${escPrint(state.settings.school)}</p><p>${escPrint(state.settings.tournament)} · Tahun ${escPrint(state.settings.activeYear)}</p></header><h2>${escPrint(title)}</h2><p>Tarikh Laporan: ${escPrint(new Date().toLocaleDateString('ms-MY'))}</p><table><thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</table></body></html>`;
+  
+  const logoImg = state.settings.logo 
+    ? `<img src="${state.settings.logo}" style="height: 42px; width: 42px; object-fit: cover; border-radius: 6px; background: white; padding: 2px;">` 
+    : '';
+
+  const reportHTML = `<!doctype html><html><head><meta charset="utf-8"><title>${escPrint(title)}</title><style>@page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;color:#10243e}.pdf-header{display:flex;align-items:center;gap:14px;background:#09243b;color:#fff;padding:18px 20px;border-bottom:3px solid #e4aa36}h1{font-size:18px;margin:0 0 4px}p{margin:2px 0;font-size:11px;color:#d8e4ea}h2{font-size:16px;margin:22px 0 8px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#f1f5f9;color:#334155;text-align:left;padding:7px;border-bottom:1px solid #cbd5e1}td{padding:7px;border-bottom:1px solid #e2e8f0;vertical-align:top}tr:nth-child(even){background:#fafcfc}</style></head><body>
+  <div class="pdf-header">
+    ${logoImg}
+    <div>
+      <h1>STOS · ${escPrint(title)}</h1>
+      <p>${escPrint(state.settings.school)}</p>
+      <p>${escPrint(state.settings.tournament)} · Tahun ${escPrint(state.settings.activeYear)}</p>
+    </div>
+  </div>
+  <h2>Ringkasan Laporan</h2><p>Tarikh Laporan: ${escPrint(new Date().toLocaleDateString('ms-MY'))}</p><table><thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
   popup.document.write(reportHTML);
   popup.document.close();
   setTimeout(() => { popup.focus(); popup.print(); }, 400);
