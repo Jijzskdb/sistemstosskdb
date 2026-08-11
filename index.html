@@ -111,9 +111,21 @@ const NAV=[
 ];
 let houses=['Merah','Biru','Hijau','Kuning'];
 let houseStyle={Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
-let registrationHouseFilter = houses[0]; // Rumah pilihan semasa untuk menu pendaftaran
+let registrationHouseFilter = houses[0];
 const defaultData={
-  settings:{school:'SK Seri Gemilang',tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',activeYear:'2026',activeCompetitionId:'KJ-2026-001',years:[],crossPoints:[10,9,8,7,6,5,4,3,2,1],historicalRecords:[],houses:['Merah','Biru','Hijau','Kuning'],houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']}},
+  settings:{
+    school:'SK Seri Gemilang',
+    tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',
+    activeYear:'2026',
+    activeCompetitionId:'KJ-2026-001',
+    years:[],
+    crossPoints:[10,9,8,7,6,5,4,3,2,1],
+    historicalRecords:[],
+    houses:['Merah','Biru','Hijau','Kuning'],
+    houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']},
+    maxIndividualEvents: 2,
+    maxRelayEvents: 2
+  },
   students:[
    {id:'s1',bib:'M001',name:'Muhammad Firdaus',gender:'Lelaki',className:'6 Gemilang',category:'L12TKB',house:'Merah',status:'Aktif'},
    {id:'s2',bib:'B001',name:'Adriana Sofia',gender:'Perempuan',className:'5 Cemerlang',category:'P12TKB',house:'Biru',status:'Aktif'},
@@ -202,6 +214,8 @@ function renderDashboard(){
 }
 function standingTable(rows){return `<div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Rumah</th><th>Emas</th><th>Perak</th><th>Gangsa</th><th>Mata</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td class="font-extrabold">${i+1}</td><td><span class="badge" style="color:${houseStyle[r.house][0]};background:${houseStyle[r.house][1]}">${r.house}</span></td><td>${r.gold}</td><td>${r.silver}</td><td>${r.bronze}</td><td class="font-extrabold">${r.points}</td></tr>`).join('')}</tbody></table></div>`}
 function renderStudents() {
+  const maxInd = state.settings.maxIndividualEvents ?? 2;
+  const maxRelay = state.settings.maxRelayEvents ?? 2;
   let rows = state.students.filter(s => (filters.house === 'Semua' || s.house === filters.house) && (`${s.name} ${s.bib} ${s.className}`.toLowerCase().includes(filters.search.toLowerCase())));
   
   const studentsWithRegStats = rows.map(s => {
@@ -252,8 +266,8 @@ function renderStudents() {
           <th>Kelas</th>
           <th>Kategori Asal</th>
           <th>Rumah</th>
-          <th class="text-center">Individu (Had 2)</th>
-          <th class="text-center">Relay (Had 2)</th>
+          <th class="text-center">Individu (Had ${maxInd})</th>
+          <th class="text-center">Relay (Had ${maxRelay})</th>
           <th class="text-center">Merentas Desa</th>
           <th>Pinjam Kategori</th>
           <th>Tindakan</th>
@@ -261,8 +275,8 @@ function renderStudents() {
       </thead>
       <tbody>
         ${studentsWithRegStats.map(s => {
-          const indWarning = s.indCount > 2 ? 'text-rose-600 font-extrabold' : 'text-slate-700';
-          const relayWarning = s.relayCount > 2 ? 'text-rose-600 font-extrabold' : 'text-slate-700';
+          const indWarning = s.indCount > maxInd ? 'text-rose-600 font-extrabold' : 'text-slate-700';
+          const relayWarning = s.relayCount > maxRelay ? 'text-rose-600 font-extrabold' : 'text-slate-700';
           return `<tr>
             <td class="font-extrabold">${s.bib}</td>
             <td><button class="font-bold text-[#146b8c] hover:underline text-left" data-action="profile" data-id="${s.id}">${esc(s.name)}</button></td>
@@ -270,8 +284,8 @@ function renderStudents() {
             <td>${s.className}</td>
             <td><span class="badge bg-slate-100 text-slate-700">${s.category}</span></td>
             <td><span class="badge" style="color:${houseStyle[s.house]?.[0] || '#475569'};background:${houseStyle[s.house]?.[1] || '#f1f5f9'}">${s.house}</span></td>
-            <td class="text-center ${indWarning}">${s.indCount} / 2</td>
-            <td class="text-center ${relayWarning}">${s.relayCount} / 2</td>
+            <td class="text-center ${indWarning}">${s.indCount} / ${maxInd}</td>
+            <td class="text-center ${relayWarning}">${s.relayCount} / ${maxRelay}</td>
             <td class="text-center">${s.xcCount ? '<span class="badge bg-amber-50 text-amber-700 font-bold">Ya</span>' : '<span class="text-slate-300">—</span>'}</td>
             <td>${s.borrowedInfo ? `<span class="badge bg-indigo-50 text-indigo-700 text-[10px]" title="${esc(s.borrowedInfo)}">Pinjam: ${esc(s.borrowedInfo)}</span>` : '<span class="text-slate-300 text-xs">Tiada</span>'}</td>
             <td><div class="flex gap-1">${action('Edit', 'pencil', 'edit-student')} ${action(pendingDelete === s.id ? 'Sahkan' : 'Arkib', 'archive', 'delete-student', 'btn-danger')}</div><span class="hidden row-id">${s.id}</span></td>
@@ -667,7 +681,9 @@ function renderSettings(){
  const hist = state.settings.historicalRecords || [];
  const activeHouses = state.settings.houses || houses;
  const activeHouseStyles = state.settings.houseStyles || houseStyle;
- return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif dan skala mata.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
+ const maxInd = state.settings.maxIndividualEvents ?? 2;
+ const maxRelay = state.settings.maxRelayEvents ?? 2;
+ return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif dan had syarat acara.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
  <section class="panel p-6 xl:col-span-2">
   <div class="flex flex-wrap items-center justify-between gap-4">
@@ -693,7 +709,16 @@ function renderSettings(){
  </section>
 
  <section class="panel p-6"><h3 class="mb-5 font-extrabold">Sekolah & Kejohanan</h3><div class="space-y-4"><label><span class="mb-1 block font-bold">Nama Sekolah</span><input id="setting-school" class="field" value="${esc(state.settings.school)}"></label><label><span class="mb-1 block font-bold">Nama Kejohanan</span><input id="setting-tournament" class="field" value="${esc(state.settings.tournament)}"></label><label><span class="mb-1 block font-bold">Tahun Aktif</span><input id="setting-year" type="number" min="2020" max="2099" class="field" value="${state.settings.activeYear}"></label></div></section>
- <section class="panel p-6"><h3 class="mb-5 font-extrabold">Penjenamaan, Logo & Mata</h3>
+ 
+ <section class="panel p-6"><h3 class="mb-5 font-extrabold">Had Syarat Pendaftaran Atlet</h3>
+ <div class="space-y-4">
+  <label><span class="mb-1 block font-bold">Had Maksimum Acara Individu Seoramg Murid</span><input id="setting-max-ind" type="number" min="1" max="6" class="field" value="${maxInd}"></label>
+  <label><span class="mb-1 block font-bold">Had Maksimum Acara Relay Seorang Murid</span><input id="setting-max-relay" type="number" min="1" max="6" class="field" value="${maxRelay}"></label>
+  <label><span class="mb-1 block font-bold">Mata Merentas Desa (Top 10)</span><input id="setting-points" class="field" value="${state.settings.crossPoints.join(', ')}"></label>
+ </div>
+ </section>
+
+ <section class="panel p-6 xl:col-span-2">
  <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
   <b class="block mb-2">Logo Sekolah / Kejohanan</b>
   <div class="flex items-center gap-4">
@@ -708,7 +733,7 @@ function renderSettings(){
    </div>
   </div>
  </div>
- <label class="mt-4 block"><span class="mb-1 block font-bold">Mata Merentas Desa (Top 10)</span><input id="setting-points" class="field" value="${state.settings.crossPoints.join(', ')}"></label></section>
+ </section>
  
  <section class="panel p-6 xl:col-span-2">
   <div class="flex items-center justify-between mb-4">
@@ -1080,11 +1105,50 @@ function openRegistration(preEventId = '', preHouse = ''){
     <button class="btn btn-primary w-full" type="submit" ${!studentOptions ? 'disabled' : ''}>Sahkan Pendaftaran</button>
 </form>`);
  
- $('#reg-form').onsubmit=async e=>{e.preventDefault();const studentId=$('#rf-student').value,eventId=$('#rf-event').value;if(!studentId||!eventId)return;const s=state.students.find(x=>x.id===studentId),ev=state.events.find(x=>x.id===eventId),regs=state.registrations.filter(r=>r.studentId===studentId);
- let error='';if(state.registrations.some(r=>r.studentId===studentId&&r.eventId===eventId))error='Atlet telah didaftarkan untuk acara ini.';
- if(ev.type!=='Merentas Desa'){if(ev.type==='Relay'&&regs.filter(r=>state.events.find(x=>x.id===r.eventId)?.type==='Relay').length>=2)error='Had dua acara relay telah dicapai.';if(!['Relay','Merentas Desa'].includes(ev.type)&&regs.filter(r=>!['Relay','Merentas Desa'].includes(state.events.find(x=>x.id===r.eventId)?.type)).length>=2)error='Had dua acara individu telah dicapai.';if(ev.type==='Relay'&&state.registrations.filter(r=>r.eventId===eventId&&state.students.find(x=>x.id===r.studentId)?.house===s.house).length>=4)error='Maksimum empat atlet rumah bagi acara relay ini telah dicapai.';if(!['Relay'].includes(ev.type)&&state.registrations.filter(r=>r.eventId===eventId&&state.students.find(x=>x.id===r.studentId)?.house===s.house).length>=3)error='Maksimum tiga atlet rumah bagi acara individu ini telah dicapai.'}
- if(error){const m=$('#reg-message');m.textContent=error;m.className='rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700';return}
- state.registrations.push({id:uid('r'),studentId,eventId});await saveTypes(['registrations']);closeModal();render();};
+ $('#reg-form').onsubmit=async e=>{
+   e.preventDefault();
+   const studentId=$('#rf-student').value;
+   const eventId=$('#rf-event').value;
+   if(!studentId||!eventId)return;
+   const s=state.students.find(x=>x.id===studentId);
+   const ev=state.events.find(x=>x.id===eventId);
+   const regs=state.registrations.filter(r=>r.studentId===studentId);
+   
+   const maxInd = state.settings.maxIndividualEvents ?? 2;
+   const maxRelay = state.settings.maxRelayEvents ?? 2;
+
+   let error='';
+   if(state.registrations.some(r=>r.studentId===studentId&&r.eventId===eventId)) {
+     error='Atlet telah didaftarkan untuk acara ini.';
+   }
+   if(ev.type!=='Merentas Desa'){
+     const userRelayCount = regs.filter(r=>state.events.find(x=>x.id===r.eventId)?.type==='Relay').length;
+     const userIndCount = regs.filter(r=>!['Relay','Merentas Desa'].includes(state.events.find(x=>x.id===r.eventId)?.type)).length;
+
+     if(ev.type==='Relay' && userRelayCount >= maxRelay) {
+       error=`Had ${maxRelay} acara relay telah dicapai.`;
+     }
+     if(!['Relay','Merentas Desa'].includes(ev.type) && userIndCount >= maxInd) {
+       error=`Had ${maxInd} acara individu telah dicapai.`;
+     }
+     if(ev.type==='Relay'&&state.registrations.filter(r=>r.eventId===eventId&&state.students.find(x=>x.id===r.studentId)?.house===s.house).length>=4) {
+       error='Maksimum empat atlet rumah bagi acara relay ini telah dicapai.';
+     }
+     if(!['Relay'].includes(ev.type)&&state.registrations.filter(r=>r.eventId===eventId&&state.students.find(x=>x.id===r.studentId)?.house===s.house).length>=3) {
+       error='Maksimum tiga atlet rumah bagi acara individu ini telah dicapai.';
+     }
+   }
+   if(error){
+     const m=$('#reg-message');
+     m.textContent=error;
+     m.className='rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700';
+     return;
+   }
+   state.registrations.push({id:uid('r'),studentId,eventId});
+   await saveTypes(['registrations']);
+   closeModal();
+   render();
+ };
 }
 function openJudge(eventId){
  const e=state.events.find(x=>x.id===eventId);
@@ -1714,8 +1778,17 @@ function makePdfLegacy(kind){
   doc.save(`SKSTOS_Laporan_${kind}_${activeYear}.pdf`);
 }
 async function saveSettings(){
- const year=$('#setting-year').value,points=$('#setting-points').value.split(',').map(Number).filter(Number.isFinite).slice(0,10);
- state.settings.school=$('#setting-school').value.trim();state.settings.tournament=$('#setting-tournament').value.trim();state.settings.crossPoints=points.length===10?points:[10,9,8,7,6,5,4,3,2,1];
+ const year=$('#setting-year').value;
+ const points=$('#setting-points').value.split(',').map(Number).filter(Number.isFinite).slice(0,10);
+ 
+ const maxIndVal = parseInt($('#setting-max-ind').value, 10);
+ const maxRelayVal = parseInt($('#setting-max-relay').value, 10);
+
+ state.settings.school=$('#setting-school').value.trim();
+ state.settings.tournament=$('#setting-tournament').value.trim();
+ state.settings.crossPoints=points.length===10?points:[10,9,8,7,6,5,4,3,2,1];
+ state.settings.maxIndividualEvents = isNaN(maxIndVal) ? 2 : maxIndVal;
+ state.settings.maxRelayEvents = isNaN(maxRelayVal) ? 2 : maxRelayVal;
  
  const savedHouses = [];
  const savedHouseStyles = {};
