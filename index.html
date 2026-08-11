@@ -335,8 +335,34 @@ function getEventHeats(e) {
   const lanes = getEventLanes(e);
   const regs = eventRegs(e);
   
-  // Jika jumlah peserta kurang atau sama dengan had lorong, terus jadi Akhir (Direct Final) tanpa separuh akhir
-  if (regs.length <= lanes) {
+  // Kira bilangan peserta/pasukan yang sah
+  let participantCount = regs.length;
+  if (e.type === 'Relay') {
+    const byHouse = {};
+    regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
+    const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
+    participantCount = activeHouses.length;
+  }
+  
+  // Jika jumlah peserta/pasukan kurang atau sama dengan had lorong, terus jadi Akhir (Direct Final)
+  if (participantCount <= lanes) {
+    if (e.type === 'Relay') {
+      const byHouse = {};
+      regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
+      const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
+      return [{
+        heatName: 'Peringkat Akhir (Terus)',
+        rows: Array.from({length: lanes}, (_, i) => {
+          const h = activeHouses[i];
+          return {
+            lane: i + 1,
+            house: h || '—',
+            athletes: h ? (byHouse[h] || []) : []
+          };
+        })
+      }];
+    }
+
     return [{
       heatName: 'Peringkat Akhir (Terus)',
       rows: Array.from({length: lanes}, (_, i) => {
@@ -438,7 +464,22 @@ function createLaneDraw(e){
   const lanes = getEventLanes(e);
   const regs = eventRegs(e);
   
-  if(regs.length <= lanes) {
+  let participantCount = regs.length;
+  if (e.type === 'Relay') {
+    const byHouse = {};
+    regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
+    participantCount = Object.keys(byHouse).filter(h => byHouse[h].length > 0).length;
+  }
+
+  if(participantCount <= lanes) {
+    if(e.type === 'Relay') {
+      const byHouse = {};
+      regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
+      const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
+      if(!state.settings.laneDraws) state.settings.laneDraws = {};
+      state.settings.laneDraws[e.id] = activeHouses;
+      return activeHouses;
+    }
     let ordered = fairShuffle(regs);
     if(!state.settings.laneDraws) state.settings.laneDraws = {};
     state.settings.laneDraws[e.id] = ordered.map(s => s.id);
@@ -494,15 +535,22 @@ function renderDraw(){
  <div class="grid gap-5">${state.events.map(e=>{
     const lanes = getEventLanes(e);
     const regs = eventRegs(e);
+    let participantCount = regs.length;
+    if(e.type==='Relay'){
+      const byHouse={};
+      regs.forEach(s=>{ (byHouse[s.house]||=[]).push(s); });
+      participantCount = Object.keys(byHouse).filter(h=>byHouse[h].length>0).length;
+    }
+    const isDirectFinal = participantCount <= lanes;
+
     if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${regs.length} peserta</span></div><div class="flex flex-wrap gap-2">${regs.map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
     if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
     
     if(e.type==='Relay' || e.type==='Balapan'){
       const heats = getEventHeats(e);
-      const isDirectFinal = regs.length <= lanes;
       return `<section class="panel p-5">
         <div class="mb-3 flex items-center justify-between">
-          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${lanes} lorong max · ${isDirectFinal ? 'Terus Akhir (Cukup Lorong)' : 'Auto-Siri Separuh Akhir'}</p></div>
+          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${lanes} lorong max · ${isDirectFinal ? 'Terus Akhir (Cukup Lorong/Pasukan)' : 'Auto-Siri Separuh Akhir'}</p></div>
           <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
         </div>
         ${heats.map(heat=>`
@@ -608,7 +656,14 @@ function judgePreview(e){
  const rr=state.results.filter(r=>r.eventId===e.id);
  const lanes = getEventLanes(e);
  const regs = eventRegs(e);
- const isDirectFinal = regs.length <= lanes;
+ 
+ let participantCount = regs.length;
+ if(e.type==='Relay'){
+   const byHouse={};
+   regs.forEach(s=>{ (byHouse[s.house]||=[]).push(s); });
+   participantCount = Object.keys(byHouse).filter(h=>byHouse[h].length>0).length;
+ }
+ const isDirectFinal = participantCount <= lanes;
 
  if(e.type==='Padang'){
    const p=laneParticipants(e);
@@ -1320,7 +1375,14 @@ function openJudge(eventId){
  const e=state.events.find(x=>x.id===eventId);
  const lanes = getEventLanes(e);
  const regs = eventRegs(e);
- const isDirectFinal = regs.length <= lanes;
+ 
+ let participantCount = regs.length;
+ if(e.type==='Relay'){
+   const byHouse={};
+   regs.forEach(s=>{ (byHouse[s.house]||=[]).push(s); });
+   participantCount = Object.keys(byHouse).filter(h=>byHouse[h].length>0).length;
+ }
+ const isDirectFinal = participantCount <= lanes;
  
  if(e.type==='Relay'){
    const heats = getEventHeats(e);
@@ -1564,7 +1626,14 @@ function makeJudgeFormPdf(e){
   const isBalapan = e.type === 'Balapan';
   const lanes = getEventLanes(e);
   const regs = eventRegs(e);
-  const isDirectFinal = regs.length <= lanes;
+  
+  let participantCount = regs.length;
+  if(isRelay){
+    const byHouse={};
+    regs.forEach(s=>{ (byHouse[s.house]||=[]).push(s); });
+    participantCount = Object.keys(byHouse).filter(h=>byHouse[h].length>0).length;
+  }
+  const isDirectFinal = participantCount <= lanes;
   
   const logoImg = state.settings.logo 
     ? `<img src="${state.settings.logo}" style="height: 42px; width: 42px; object-fit: cover; border-radius: 6px; background: white; padding: 2px;">` 
