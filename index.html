@@ -306,11 +306,6 @@ function renderEvents(){
  <section class="panel overflow-hidden"><div class="table-wrap"><table class="data-table"><thead><tr><th>No.</th><th>Nama Acara</th><th>Kategori</th><th>Jenis</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${state.events.map(e=>`<tr><td class="font-extrabold">${e.no}</td><td class="font-bold">${e.name}</td><td>${e.category}</td><td><span class="badge bg-sky-50 text-sky-700">${e.type}</span></td><td>${e.status}</td><td><div class="flex gap-1">${action('Edit','pencil','edit-event')} ${action(pendingDelete===e.id?'Sahkan':'Arkib','archive','delete-event','btn-danger')}</div><span class="hidden row-id">${e.id}</span></td></tr>`).join('')}</tbody></table></div></section>`;
 }
 function eventRegs(e){return state.registrations.filter(r=>r.eventId===e.id).map(r=>state.students.find(s=>s.id===r.studentId)).filter(Boolean)}
-function fairShuffle(items){
- const shuffled=[...items];
- for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]}
- return shuffled;
-}
 function getEventLanes(e) {
   if (e.type === 'Relay') return state.settings.maxRelayLanes ?? 6;
   if (e.type === 'Balapan') {
@@ -334,24 +329,28 @@ function laneParticipants(e){
 function getEventHeats(e) {
   const lanes = getEventLanes(e);
   const regs = eventRegs(e);
-  
-  let participantCount = regs.length;
+  if (regs.length === 0) return [];
+
   if (e.type === 'Relay') {
     const byHouse = {};
     regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-    const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-    participantCount = activeHouses.length;
-  }
-  
-  if (participantCount <= lanes) {
-    if (e.type === 'Relay') {
-      const byHouse = {};
-      regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-      const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
+    
+    let assignedHouses = state.settings.laneDraws?.[e.id];
+    if (!Array.isArray(assignedHouses)) {
+      const activeHouses = state.settings.houses || houses;
+      const eventIdx = state.events.findIndex(x => x.id === e.id);
+      const safeEventIdx = eventIdx >= 0 ? eventIdx : 0;
+      assignedHouses = [];
+      for (let i = 0; i < activeHouses.length; i++) {
+        assignedHouses.push(activeHouses[(i + safeEventIdx) % activeHouses.length]);
+      }
+    }
+
+    if (assignedHouses.length <= lanes) {
       return [{
         heatName: 'Peringkat Akhir (Terus)',
         rows: Array.from({length: lanes}, (_, i) => {
-          const h = activeHouses[i];
+          const h = assignedHouses[i];
           return {
             lane: i + 1,
             house: h || '—',
@@ -360,107 +359,32 @@ function getEventHeats(e) {
         })
       }];
     }
-
-    const currentDraw = state.settings.laneDraws?.[e.id];
-    let orderedRegs = regs;
-    if (currentDraw && Array.isArray(currentDraw)) {
-      orderedRegs = currentDraw.map(id => regs.find(s => s.id === id)).filter(Boolean);
-    }
-
-    return [{
-      heatName: 'Peringkat Akhir (Terus)',
-      rows: Array.from({length: lanes}, (_, i) => {
-        const s = orderedRegs[i];
-        return {
-          lane: i + 1,
-          bib: s?.bib || '—',
-          name: s?.name || 'Kosong',
-          house: s?.house || '—',
-          studentId: s?.id,
-          athletes: s ? [s] : []
-        };
-      })
-    }];
   }
 
-  if (e.type === 'Relay') {
-    const byHouse = {};
-    regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-    const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-    
-    let assignedHousesGroups;
-    const current = state.settings.laneDraws?.[e.id];
-    if (current && Array.isArray(current) && Array.isArray(current[0])) {
-      assignedHousesGroups = current;
-    } else {
-      const shuffledHouses = fairShuffle(activeHouses);
-      assignedHousesGroups = [];
-      for (let i = 0; i < shuffledHouses.length; i += lanes) {
-        assignedHousesGroups.push(shuffledHouses.slice(i, i + lanes));
-      }
-      if(assignedHousesGroups.length === 0) assignedHousesGroups = [[]];
+  if (e.type === 'Balapan') {
+    let currentDraw = state.settings.laneDraws?.[e.id];
+    let participantIds = Array.isArray(currentDraw) && !Array.isArray(currentDraw[0]) 
+      ? currentDraw 
+      : regs.map(s => s.id);
+
+    if (participantIds.length <= lanes) {
+      const heatParticipants = participantIds.map(id => state.students.find(s => s.id === id)).filter(Boolean);
+      return [{
+        heatName: 'Peringkat Akhir (Terus)',
+        rows: Array.from({length: lanes}, (_, i) => {
+          const s = heatParticipants[i];
+          return {
+            lane: i + 1,
+            bib: s?.bib || '—',
+            name: s?.name || 'Kosong',
+            house: s?.house || '—',
+            studentId: s?.id
+          };
+        })
+      }];
     }
-    
-    return assignedHousesGroups.map((houseGroup, heatIdx) => {
-      const heatRows = [];
-      for (let i = 0; i < lanes; i++) {
-        const h = houseGroup[i];
-        const athletes = h ? (byHouse[h] || []) : [];
-        heatRows.push({
-          lane: i + 1,
-          house: h || '—',
-          athletes: athletes
-        });
-      }
-      return {
-        heatName: `Separuh Akhir ${heatIdx + 1}`,
-        rows: heatRows
-      };
-    });
-  } else if (e.type === 'Balapan') {
-    const current = state.settings.laneDraws?.[e.id];
-    let heatIdsGroups = [];
-    if (current && Array.isArray(current) && Array.isArray(current[0])) {
-      heatIdsGroups = current;
-    } else if (current && Array.isArray(current) && !Array.isArray(current[0])) {
-      heatIdsGroups = [current];
-    } else {
-      const byHouse = {};
-      regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-      Object.keys(byHouse).forEach(h => { byHouse[h] = fairShuffle(byHouse[h]); });
-      const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-      const numHeats = Math.ceil(regs.length / lanes) || 1;
-      const heatGroupsArray = Array.from({length: numHeats}, () => []);
-      
-      let heatIdx = 0;
-      activeHouses.forEach(house => {
-        byHouse[house].forEach(student => {
-          heatGroupsArray[heatIdx].push(student.id);
-          heatIdx = (heatIdx + 1) % numHeats;
-        });
-      });
-      heatIdsGroups = heatGroupsArray.map(heatIds => fairShuffle(heatIds));
-    }
-    
-    return heatIdsGroups.map((heatIds, heatIdx) => {
-      const heatParticipants = heatIds.map(id => state.students.find(s => s.id === id)).filter(Boolean);
-      const heatRows = [];
-      for (let i = 0; i < lanes; i++) {
-        const s = heatParticipants[i];
-        heatRows.push({
-          lane: i + 1,
-          bib: s?.bib || '—',
-          name: s?.name || 'Kosong',
-          house: s?.house || '—',
-          studentId: s?.id
-        });
-      }
-      return {
-        heatName: `Separuh Akhir ${heatIdx + 1}`,
-        rows: heatRows
-      };
-    });
   }
+
   return null;
 }
 
@@ -470,94 +394,54 @@ function createLaneDraw(e){
   
   if (regs.length === 0) return [];
 
-  // Fungsi pembantu untuk memaksa susunan sentiasa berubah (forced shuffle)
-  const forceShuffle = (items, keyFn) => {
-    if (items.length <= 1) return [...items];
-    let ordered = [...items];
-    let limit = 0;
-    do {
-      ordered = fairShuffle(items);
-      limit++;
-    } while (
-      JSON.stringify(ordered.map(keyFn)) === JSON.stringify(items.map(keyFn)) && 
-      limit < 15
-    );
-    return ordered;
-  };
+  const activeHouses = state.settings.houses || houses;
+  const eventIdx = state.events.findIndex(x => x.id === e.id);
+  const safeEventIdx = eventIdx >= 0 ? eventIdx : 0;
 
-  // 1. KATEGORI PADANG (Giliran P1 - P6)
+  // Kumpul peserta mengikut rumah
+  const byHouse = {};
+  activeHouses.forEach(h => { byHouse[h] = []; });
+  regs.forEach(s => {
+    byHouse[s.house] ||= [];
+    byHouse[s.house].push(s);
+  });
+
+  // Susun rumah secara berputar (rotational) mengikut nombor acara
+  let orderedHouses = [];
+  for (let i = 0; i < activeHouses.length; i++) {
+    orderedHouses.push(activeHouses[(i + safeEventIdx) % activeHouses.length]);
+  }
+
+  // 1. KATEGORI PADANG (Giliran P1 - P6 berstruktur tetap mengikut putaran rumah)
   if (e.type === 'Padang') {
-    const ordered = forceShuffle(regs, s => s.id);
+    let orderedRegs = [];
+    orderedHouses.forEach(houseName => {
+      orderedRegs.push(...(byHouse[houseName] || []));
+    });
+    const includedIds = new Set(orderedRegs.map(s => s.id));
+    regs.forEach(s => { if(!includedIds.has(s.id)) orderedRegs.push(s); });
+
     if (!state.settings.laneDraws) state.settings.laneDraws = {};
-    state.settings.laneDraws[e.id] = ordered.map(s => s.id);
-    return ordered;
+    state.settings.laneDraws[e.id] = orderedRegs.map(s => s.id);
+    return orderedRegs;
   }
 
-  let participantCount = regs.length;
-  if (e.type === 'Relay') {
-    const byHouse = {};
-    regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-    participantCount = Object.keys(byHouse).filter(h => byHouse[h].length > 0).length;
-  }
-
-  // 2. KATEGORI PERINGKAT AKHIR TERUS (Direct Final - peserta/pasukan <= had lorong)
-  if (participantCount <= lanes) {
-    if (e.type === 'Relay') {
-      const byHouse = {};
-      regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-      const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-      const shuffledHouses = forceShuffle(activeHouses, h => h);
-      if (!state.settings.laneDraws) state.settings.laneDraws = {};
-      state.settings.laneDraws[e.id] = shuffledHouses;
-      return shuffledHouses;
-    }
-    
-    const ordered = forceShuffle(regs, s => s.id);
-    if (!state.settings.laneDraws) state.settings.laneDraws = {};
-    state.settings.laneDraws[e.id] = ordered.map(s => s.id);
-    return ordered;
-  }
-
-  // 3. KATEGORI SEPARUH AKHIR RELAY
-  if (e.type === 'Relay') {
-    const byHouse = {};
-    regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-    const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-    const shuffledHouses = forceShuffle(activeHouses, h => h);
-    
-    const heatGroups = [];
-    for (let i = 0; i < shuffledHouses.length; i += lanes) {
-      heatGroups.push(shuffledHouses.slice(i, i + lanes));
-    }
-    if (!state.settings.laneDraws) state.settings.laneDraws = {};
-    state.settings.laneDraws[e.id] = heatGroups;
-    return heatGroups;
-  }
-  
-  // 4. KATEGORI SEPARUH AKHIR BALAPAN
-  if (e.type === 'Balapan') {
-    const byHouse = {};
-    regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-    Object.keys(byHouse).forEach(h => { byHouse[h] = forceShuffle(byHouse[h], s => s.id); });
-    const activeHouses = Object.keys(byHouse).filter(h => h.length > 0);
-    const numHeats = Math.ceil(regs.length / lanes) || 1;
-    const heatGroupsArray = Array.from({length: numHeats}, () => []);
-    
-    let heatIdx = 0;
-    activeHouses.forEach(house => {
-      byHouse[house].forEach(student => {
-        heatGroupsArray[heatIdx].push(student.id);
-        heatIdx = (heatIdx + 1) % numHeats;
+  // 2. KATEGORI BALAPAN & RELAY (Pattern Tetap Lorong, berputar mengikut rumah)
+  if (e.type === 'Balapan' || e.type === 'Relay') {
+    let assignedList = [];
+    orderedHouses.forEach(houseName => {
+      const athletes = byHouse[houseName] || [];
+      athletes.forEach(athlete => {
+        assignedList.push(e.type === 'Relay' ? houseName : athlete.id);
       });
     });
-    
-    const finalizedHeatGroups = heatGroupsArray.map(heatIds => forceShuffle(heatIds, id => id));
+
     if (!state.settings.laneDraws) state.settings.laneDraws = {};
-    state.settings.laneDraws[e.id] = finalizedHeatGroups;
-    return finalizedHeatGroups;
+    state.settings.laneDraws[e.id] = assignedList;
+    return assignedList;
   }
 
-  let ordered = forceShuffle(regs, s => s.id);
+  let ordered = [...regs];
   if (!state.settings.laneDraws) state.settings.laneDraws = {};
   state.settings.laneDraws[e.id] = ordered.map(s => s.id);
   return ordered;
@@ -589,7 +473,7 @@ function renderDraw(){
           <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${lanes} lorong max · ${isDirectFinal ? 'Terus Akhir (Cukup Lorong/Pasukan)' : 'Auto-Siri Separuh Akhir'}</p></div>
           <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
         </div>
-        ${heats.map(heat=>`
+        ${heats ? heats.map(heat=>`
           <div class="mb-5 last:mb-0">
             <h5 class="text-xs font-extrabold uppercase tracking-wider text-[#146b8c] mb-2 bg-sky-50 px-3 py-1.5 rounded-lg w-fit">${heat.heatName}</h5>
             ${miniGrid(heat.rows.map(r=>{
@@ -600,7 +484,7 @@ function renderDraw(){
               }
             }), e.type==='Relay'?['Lorong','Rumah Sukan','Senarai Atlet / Pelari']:['Lorong','Bib','Atlet','Rumah'])}
           </div>
-        `).join('')}
+        `).join('') : '<p class="text-sm text-slate-500">Sila tekan butang Jana Undian.</p>'}
       </section>`;
     }
     return '';
@@ -709,6 +593,7 @@ function judgePreview(e){
  
  if(e.type==='Relay' || e.type==='Balapan'){
    const heats = getEventHeats(e);
+   if(!heats) return '<p class="text-sm text-slate-400">Sila jana undian terlebih dahulu.</p>';
    let html = heats.map(heat=>`
      <div class="mb-3">
        <h5 class="text-xs font-bold uppercase tracking-wider text-[#146b8c] mb-1.5">${heat.heatName}</h5>
@@ -1679,29 +1564,31 @@ function makeJudgeFormPdf(e){
 
   if (isBalapan || isRelay) {
     const heats = getEventHeats(e);
-    heats.forEach(heat => {
-      const headers = isRelay
-        ? ['LORONG','RUMAH SUKAN','PELARI 1','PELARI 2','PELARI 3','PELARI 4','MASA','KEDUDUKAN','CATATAN']
-        : ['LORONG','BIB','ATLET','RUMAH SUKAN','MASA','KEDUDUKAN','CATATAN'];
-      
-      const heatRows = heat.rows.map(r => {
-        if (isRelay) {
-          return [r.lane, r.house, r.athletes?.[0]?.name||'', r.athletes?.[1]?.name||'', r.athletes?.[2]?.name||'', r.athletes?.[3]?.name||'', '', '', ''];
-        } else {
-          return [r.lane, r.bib, r.name, r.house, '', '', ''];
-        }
-      });
+    if(heats) {
+      heats.forEach(heat => {
+        const headers = isRelay
+          ? ['LORONG','RUMAH SUKAN','PELARI 1','PELARI 2','PELARI 3','PELARI 4','MASA','KEDUDUKAN','CATATAN']
+          : ['LORONG','BIB','ATLET','RUMAH SUKAN','MASA','KEDUDUKAN','CATATAN'];
+        
+        const heatRows = heat.rows.map(r => {
+          if (isRelay) {
+            return [r.lane, r.house, r.athletes?.[0]?.name||'', r.athletes?.[1]?.name||'', r.athletes?.[2]?.name||'', r.athletes?.[3]?.name||'', '', '', ''];
+          } else {
+            return [r.lane, r.bib, r.name, r.house, '', '', ''];
+          }
+        });
 
-      contentHTML += `
-        <div class="heat-section">
-          <h3>${escPrint(heat.heatName)}</h3>
-          <table>
-            <thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead>
-            <tbody>${heatRows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
-          </table>
-        </div>
-      `;
-    });
+        contentHTML += `
+          <div class="heat-section">
+            <h3>${escPrint(heat.heatName)}</h3>
+            <table>
+              <thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead>
+              <tbody>${heatRows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+            </table>
+          </div>
+        `;
+      });
+    }
 
     if (!isDirectFinal) {
       const blankFinalRows = Array.from({length: lanes}, (_, i) => isRelay ? [i+1, '—', '', '', '', '', '', '', ''] : [i+1, '—', 'Menunggu Keputusan Separuh Akhir', '—', '', '', '']);
