@@ -394,9 +394,24 @@ function createLaneDraw(e){
   
   if (regs.length === 0) return [];
 
-  const activeHouses = state.settings.houses || houses;
-  const eventIdx = state.events.findIndex(x => x.id === e.id);
-  const safeEventIdx = eventIdx >= 0 ? eventIdx : 0;
+  // Salin senarai rumah asal
+  let activeHouses = [...(state.settings.houses || houses)];
+
+  // 1. Cipta "seed" unik berdasarkan ID/No Acara supaya setiap acara ada susunan rumah yang BERBEZA
+  let seed = 0;
+  const eventIdStr = String(e.id || e.no || 'event');
+  for (let i = 0; i < eventIdStr.length; i++) {
+    seed = (seed << 5) - seed + eventIdStr.charCodeAt(i);
+    seed |= 0;
+  }
+  seed = Math.abs(seed);
+
+  // 2. Algoritma shuffle unik untuk acara ini sahaja (Fisher-Yates berpandukan seed acara)
+  for (let i = activeHouses.length - 1; i > 0; i--) {
+    const j = seed % (i + 1);
+    [activeHouses[i], activeHouses[j]] = [activeHouses[j], activeHouses[i]];
+    seed = Math.floor(seed / 7) + i * 3; 
+  }
 
   // Kumpul peserta mengikut rumah
   const byHouse = {};
@@ -406,45 +421,29 @@ function createLaneDraw(e){
     byHouse[s.house].push(s);
   });
 
-  // Susun rumah secara berputar (rotational) mengikut nombor acara
-  let orderedHouses = [];
-  for (let i = 0; i < activeHouses.length; i++) {
-    orderedHouses.push(activeHouses[(i + safeEventIdx) % activeHouses.length]);
-  }
+  // Cari bilangan maksimum atlet dalam satu-satu rumah
+  let maxAthletes = 0;
+  activeHouses.forEach(h => {
+    if ((byHouse[h] || []).length > maxAthletes) {
+      maxAthletes = (byHouse[h] || []).length;
+    }
+  });
 
-  // 1. KATEGORI PADANG (Giliran P1 - P6 berstruktur tetap mengikut putaran rumah)
-  if (e.type === 'Padang') {
-    let orderedRegs = [];
-    orderedHouses.forEach(houseName => {
-      orderedRegs.push(...(byHouse[houseName] || []));
-    });
-    const includedIds = new Set(orderedRegs.map(s => s.id));
-    regs.forEach(s => { if(!includedIds.has(s.id)) orderedRegs.push(s); });
-
-    if (!state.settings.laneDraws) state.settings.laneDraws = {};
-    state.settings.laneDraws[e.id] = orderedRegs.map(s => s.id);
-    return orderedRegs;
-  }
-
-  // 2. KATEGORI BALAPAN & RELAY (Pattern Tetap Lorong, berputar mengikut rumah)
-  if (e.type === 'Balapan' || e.type === 'Relay') {
-    let assignedList = [];
-    orderedHouses.forEach(houseName => {
+  // 3. Susunan Selang-Seli (Interleaved) mengikut urutan unik rumah untuk acara tersebut
+  let assignedList = [];
+  for (let slot = 0; slot < maxAthletes; slot++) {
+    for (let i = 0; i < activeHouses.length; i++) {
+      const houseName = activeHouses[i];
       const athletes = byHouse[houseName] || [];
-      athletes.forEach(athlete => {
-        assignedList.push(e.type === 'Relay' ? houseName : athlete.id);
-      });
-    });
-
-    if (!state.settings.laneDraws) state.settings.laneDraws = {};
-    state.settings.laneDraws[e.id] = assignedList;
-    return assignedList;
+      if (athletes[slot]) {
+        assignedList.push(e.type === 'Relay' ? houseName : athletes[slot].id);
+      }
+    }
   }
 
-  let ordered = [...regs];
   if (!state.settings.laneDraws) state.settings.laneDraws = {};
-  state.settings.laneDraws[e.id] = ordered.map(s => s.id);
-  return ordered;
+  state.settings.laneDraws[e.id] = assignedList;
+  return assignedList;
 }
 
 function renderDraw(){
@@ -613,10 +612,10 @@ function judgePreview(e){
    if (!isDirectFinal) {
      const blankFinalRows = Array.from({length: lanes}, (_, i) => [i + 1, '—', 'Menunggu Keputusan Separuh Akhir', '—', '—']);
      html += `
-       <div class="mt-4 pt-3 border-t border-dashed border-slate-300">
-         <h5 class="text-xs font-bold uppercase tracking-wider text-amber-600 mb-1.5">Peringkat Akhir (Borang Templat Kosong)</h5>
-         ${miniGrid(blankFinalRows, ['Lorong', 'Bib', 'Atlet', 'Masa', 'Status'])}
-       </div>
+        <div class="mt-4 pt-3 border-t border-dashed border-slate-300">
+          <h5 class="text-xs font-bold uppercase tracking-wider text-amber-600 mb-1.5">Peringkat Akhir (Borang Templat Kosong)</h5>
+          ${miniGrid(blankFinalRows, ['Lorong', 'Bib', 'Atlet', 'Masa', 'Status'])}
+        </div>
      `;
    }
    return html;
@@ -1921,23 +1920,23 @@ function updateLogos(){
 }
 
 async function initAfterLogin(){
-  navInit();
-  setupCompetitions();
-  setupYears();
-  updateLogos();
-  render();
-  iconRefresh();
+ navInit();
+ setupCompetitions();
+ setupYears();
+ updateLogos();
+ render();
+ iconRefresh();
 
-  const bannerEl = $('#dashboard-banner');
-  if(bannerEl) bannerEl.src = state.settings.banner || '';
+ const bannerEl = $('#dashboard-banner');
+ if(bannerEl) bannerEl.src = state.settings.banner || '';
 
-  try {
+ try {
     const data = await apiGet();
     applyRemoteRecords(data);
 
     const gate = $('#auth-gate');
     if (gate) gate.remove();
-  } catch (err) {
+ } catch (err) {
     console.error('LOAD ERROR:', err);
     clearGoogleSession();
 
@@ -1953,7 +1952,7 @@ async function initAfterLogin(){
     updateLogos();
     render();
     renderGoogleLogin();
-  }
+ }
 }
 
 $('#collapse-btn').onclick=()=>{$('#sidebar').classList.toggle('is-collapsed');$('#main-area').classList.toggle('is-wide')};
