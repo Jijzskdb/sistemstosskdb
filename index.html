@@ -124,7 +124,9 @@ const defaultData={
     houses:['Merah','Biru','Hijau','Kuning'],
     houseStyles:{Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']},
     maxIndividualEvents: 2,
-    maxRelayEvents: 2
+    maxRelayEvents: 2,
+    maxTrackLanes: 6,
+    maxRelayLanes: 6
   },
   students:[
    {id:'s1',bib:'M001',name:'Muhammad Firdaus',gender:'Lelaki',className:'6 Gemilang',category:'L12TKB',house:'Merah',status:'Aktif'},
@@ -308,13 +310,35 @@ function fairShuffle(items){
  for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]}
  return shuffled;
 }
+function getEventLanes(e) {
+  return e.type === 'Relay' ? (state.settings.maxRelayLanes ?? 6) : (state.settings.maxTrackLanes ?? 6);
+}
+function getEventSeries(e) {
+  const participants = eventRegs(e);
+  const lanes = getEventLanes(e);
+  if (e.type === 'Padang' || e.type === 'Merentas Desa' || participants.length <= lanes) {
+    return [{ seriesName: e.round, participants, seriesIndex: 1 }];
+  }
+  const seriesList = [];
+  const shuffled = fairShuffle(participants);
+  for (let i = 0; i < shuffled.length; i += lanes) {
+    const chunk = shuffled.slice(i, i + lanes);
+    const seriesIndex = seriesList.length + 1;
+    seriesList.push({
+      seriesName: `${e.round} (${seriesIndex})`,
+      seriesIndex,
+      participants: chunk
+    });
+  }
+  return seriesList;
+}
 function laneParticipants(e){
  const current=state.settings.laneDraws?.[e.id];
  if(current?.length)return current.map(id=>state.students.find(s=>s.id===id)).filter(Boolean);
  return eventRegs(e);
 }
 function getRelayLanes(e){
-  const lanes = e.round === 'Separuh Akhir' ? 3 : 6;
+  const lanes = getEventLanes(e);
   const regs = eventRegs(e);
   const byHouse = {};
   regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
@@ -341,7 +365,7 @@ function getRelayLanes(e){
   return rows;
 }
 function createLaneDraw(e){
-  const lanes = e.round === 'Separuh Akhir' ? 3 : 6;
+  const lanes = getEventLanes(e);
   if(e.type === 'Relay') {
     const regs = eventRegs(e);
     const byHouse = {};
@@ -357,31 +381,30 @@ function createLaneDraw(e){
   if(e.type==='Padang') {
     ordered=fairShuffle(participants);
   } else {
-    if(lanes===3) ordered=fairShuffle(participants).slice(0,3);
-    else {
-     const byHouse={}; participants.forEach(s=>(byHouse[s.house] ||= []).push(s));
-     const housesWithAthletes=Object.values(byHouse).filter(x=>x.length);
-     const set1=housesWithAthletes.map(x=>x[0]);
-     const set2=housesWithAthletes.map(x=>x[1]).filter(Boolean);
-     ordered=[...fairShuffle(set1),...fairShuffle(set2)].slice(0,lanes);
-    }
+    const byHouse={}; participants.forEach(s=>(byHouse[s.house] ||= []).push(s));
+    const housesWithAthletes=Object.values(byHouse).filter(x=>x.length);
+    const set1=housesWithAthletes.map(x=>x[0]);
+    const set2=housesWithAthletes.map(x=>x[1]).filter(Boolean);
+    ordered=[...fairShuffle(set1),...fairShuffle(set2)].slice(0,lanes);
   }
   if(!state.settings.laneDraws)state.settings.laneDraws={};
   state.settings.laneDraws[e.id]=ordered.map(s=>s.id);
   return ordered;
 }
 function renderDraw(){
- return `${pageHead('Master Undian','Undian lorong rasmi menggunakan dua set rumah sukan; urutan ini digunakan oleh Borang Hakim.',action('Cetak Semua','printer','pdf-start','btn-primary'))}
+ const lanesTrack = state.settings.maxTrackLanes ?? 6;
+ const lanesRelay = state.settings.maxRelayLanes ?? 6;
+ return `${pageHead('Master Undian','Undian lorong rasmi menggunakan tetapan lorong khusus; urutan ini digunakan oleh Borang Hakim.',action('Cetak Semua','printer','pdf-start','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>{
-    const p=laneParticipants(e);
-    if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${p.length} peserta</span></div><div class="flex flex-wrap gap-2">${p.map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
-    if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(p.map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Lorong','Bib','Atlet','Percubaan'])}</section>`;
+    const lanes = e.type === 'Relay' ? lanesRelay : lanesTrack;
+    const seriesList = getEventSeries(e);
+    if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${eventRegs(e).length} peserta</span></div><div class="flex flex-wrap gap-2">${eventRegs(e).map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
+    if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
     if(e.type==='Relay'){
       const relayRows=getRelayLanes(e);
-      const lanes=e.round==='Separuh Akhir'?3:6;
       return `<section class="panel p-5">
         <div class="mb-3 flex items-center justify-between">
-          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong · Acara Berpasukan (Relay)</p></div>
+          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong max · Acara Berpasukan (Relay)</p></div>
           <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
         </div>
         ${miniGrid(relayRows.map(r=>[
@@ -391,7 +414,7 @@ function renderDraw(){
         ]),['Lorong','Rumah Sukan','Senarai Atlet / Pelari'])}
       </section>`;
     }
-    const lanes=e.round==='Separuh Akhir'?3:6;return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong · Urutan rasmi</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(Array.from({length:lanes},(_,i)=>[i+1,p[i]?.bib||'—',p[i]?.name||'Kosong',p[i]?.house||'—']),['Lorong','Bib','Atlet','Rumah'])}</section>`
+    return seriesList.map(ser=>`<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name} — ${ser.seriesName}</b><p class="text-sm text-slate-500">${lanes} lorong max · Urutan rasmi</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(Array.from({length:lanes},(_,i)=>[i+1,ser.participants[i]?.bib||'—',ser.participants[i]?.name||'Kosong',ser.participants[i]?.house||'—']),['Lorong','Bib','Atlet','Rumah'])}</section>`).join('');
  }).join('')}</div>`;
 }
 function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
@@ -473,8 +496,8 @@ function renderRegistration(){
 }
 
 function renderJudges(){
- return `${pageHead('Borang Hakim','Masukkan masa, jarak, enam percubaan atau keputusan top 10.',action('Cetak Keputusan','file-check','pdf-results','btn-primary'))}
- <div class="grid gap-5">${state.events.map(e=>`<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type}</p></div><div class="flex flex-wrap gap-2"><button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button><button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`).join('')}</div>`;
+ return `${pageHead('Borang Hakim','Masukkan masa, jarak, enam percubaan atau keputusan.',action('Cetak Keputusan','file-check','pdf-results','btn-primary'))}
+ <div class="grid gap-5">${state.events.map(e=>`<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type} · ${e.round}</p></div><div class="flex flex-wrap gap-2"><button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button><button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`).join('')}</div>`;
 }
 function judgePreview(e){
  const p=laneParticipants(e), rr=state.results.filter(r=>r.eventId===e.id);
@@ -683,7 +706,9 @@ function renderSettings(){
  const activeHouseStyles = state.settings.houseStyles || houseStyle;
  const maxInd = state.settings.maxIndividualEvents ?? 2;
  const maxRelay = state.settings.maxRelayEvents ?? 2;
- return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif dan had syarat acara.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
+ const maxTrackLanes = state.settings.maxTrackLanes ?? 6;
+ const maxRelayLanes = state.settings.maxRelayLanes ?? 6;
+ return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif, had syarat acara & bilangan lorong.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
  <section class="panel p-6 xl:col-span-2">
   <div class="flex flex-wrap items-center justify-between gap-4">
@@ -710,10 +735,14 @@ function renderSettings(){
 
  <section class="panel p-6"><h3 class="mb-5 font-extrabold">Sekolah & Kejohanan</h3><div class="space-y-4"><label><span class="mb-1 block font-bold">Nama Sekolah</span><input id="setting-school" class="field" value="${esc(state.settings.school)}"></label><label><span class="mb-1 block font-bold">Nama Kejohanan</span><input id="setting-tournament" class="field" value="${esc(state.settings.tournament)}"></label><label><span class="mb-1 block font-bold">Tahun Aktif</span><input id="setting-year" type="number" min="2020" max="2099" class="field" value="${state.settings.activeYear}"></label></div></section>
  
- <section class="panel p-6"><h3 class="mb-5 font-extrabold">Had Syarat Pendaftaran Atlet</h3>
+ <section class="panel p-6"><h3 class="mb-5 font-extrabold">Had Syarat & Spesifikasi Lorong</h3>
  <div class="space-y-4">
-  <label><span class="mb-1 block font-bold">Had Maksimum Acara Individu Seoramg Murid</span><input id="setting-max-ind" type="number" min="1" max="6" class="field" value="${maxInd}"></label>
+  <label><span class="mb-1 block font-bold">Had Maksimum Acara Individu Seorang Murid</span><input id="setting-max-ind" type="number" min="1" max="6" class="field" value="${maxInd}"></label>
   <label><span class="mb-1 block font-bold">Had Maksimum Acara Relay Seorang Murid</span><input id="setting-max-relay" type="number" min="1" max="6" class="field" value="${maxRelay}"></label>
+  <div class="grid grid-cols-2 gap-3">
+    <label><span class="mb-1 block font-bold text-xs">Maks. Lorong Balapan Individu</span><input id="setting-max-track-lanes" type="number" min="2" max="8" class="field" value="${maxTrackLanes}"></label>
+    <label><span class="mb-1 block font-bold text-xs">Maks. Lorong Relay</span><input id="setting-max-relay-lanes" type="number" min="2" max="8" class="field" value="${maxRelayLanes}"></label>
+  </div>
   <label><span class="mb-1 block font-bold">Mata Merentas Desa (Top 10)</span><input id="setting-points" class="field" value="${state.settings.crossPoints.join(', ')}"></label>
  </div>
  </section>
@@ -882,7 +911,7 @@ function studentForm(s={}){
  return `<form id="student-form" class="grid gap-4 md:grid-cols-2"><input type="hidden" id="sf-id" value="${s.id||''}"><label class="md:col-span-2"><span class="mb-1 block font-bold">Nama Murid</span><input id="sf-name" class="field" required value="${esc(s.name||'')}"></label><label><span class="mb-1 block font-bold">Jantina</span><select id="sf-gender" class="field"><option ${s.gender==='Lelaki'?'selected':''}>Lelaki</option><option ${s.gender==='Perempuan'?'selected':''}>Perempuan</option></select></label><label><span class="mb-1 block font-bold">Kelas</span><input id="sf-class" class="field" required value="${esc(s.className||'')}"></label><label><span class="mb-1 block font-bold">Kategori</span><input id="sf-category" class="field" required value="${esc(s.category||'L12')}"></label><label><span class="mb-1 block font-bold">Rumah Sukan</span><select id="sf-house" class="field">${houses.map(h=>`<option ${s.house===h?'selected':''}>${h}</option>`).join('')}</select></label><button class="btn btn-primary md:col-span-2" type="submit">Simpan Murid</button></form>`;
 }
 function eventForm(e={}){
- return `<form id="event-form" class="grid gap-4 md:grid-cols-2"><input id="ef-id" type="hidden" value="${e.id||''}"><label class="md:col-span-2"><span class="mb-1 block font-bold">No. Acara</span><input id="ef-no" required class="field" value="${e.no||''}"></label><label class="md:col-span-2"><span class="mb-1 block font-bold">Nama Acara</span><input id="ef-name" required class="field" value="${esc(e.name||'')}"></label><label><span class="mb-1 block font-bold">Kategori</span><input id="ef-category" required class="field" value="${e.category||'L12'}"></label><label><span class="mb-1 block font-bold">Jenis</span><select id="ef-type" class="field">${['Balapan','Padang','Merentas Desa','Relay'].map(x=>`<option ${e.type===x?'selected':''}>${x}</option>`).join('')}</select></label><label class="md:col-span-2"><span class="mb-1 block font-bold">Pusingan</span><select id="ef-round" class="field"><option>Akhir</option><option ${e.round==='Separuh Akhir'?'selected':''}>Separuh Akhir</option></select></label><button class="btn btn-primary md:col-span-2" type="submit">Simpan Acara</button></form>`;
+ return `<form id="event-form" class="grid gap-4 md:grid-cols-2"><input id="ef-id" type="hidden" value="${e.id||''}"><label class="md:col-span-2"><span class="mb-1 block font-bold">No. Acara</span><input id="ef-no" required class="field" value="${e.no||''}"></label><label class="md:col-span-2"><span class="mb-1 block font-bold">Nama Acara</span><input id="ef-name" required class="field" value="${esc(e.name||'')}"></label><label><span class="mb-1 block font-bold">Kategori</span><input id="ef-category" required class="field" value="${e.category||'L12'}"></label><label><span class="mb-1 block font-bold">Jenis</span><select id="ef-type" class="field">${['Balapan','Padang','Merentas Desa','Relay'].map(x=>`<option ${e.type===x?'selected':''}>${x}</option>`).join('')}</select></label><label class="md:col-span-2"><span class="mb-1 block font-bold">Pusingan</span><select id="ef-round" class="field"><option ${e.round==='Separuh Akhir'?'selected':''}>Separuh Akhir</option><option ${e.round==='Akhir'?'selected':''}>Akhir</option></select></label><button class="btn btn-primary md:col-span-2" type="submit">Simpan Acara</button></form>`;
 }
 function nextBib(house){
  const prefix=house[0].toUpperCase(), used=new Set(state.students.filter(s=>s.house===house).map(s=>parseInt(s.bib.slice(1),10)));
@@ -1346,7 +1375,7 @@ function makeJudgeFormPdf(e){
     <div>
       <h1>STOS · BORANG HAKIM</h1>
       <p>${escPrint(state.settings.school)}</p>
-      <p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)}</p>
+      <p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)} · <strong style="color: #e4aa36;">PUSINGAN: ${escPrint(e.round).toUpperCase()}</strong></p>
     </div>
   </div>
   <table><thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
@@ -1394,401 +1423,22 @@ function makePdf(kind){
   popup.document.close();
   setTimeout(() => { popup.focus(); popup.print(); }, 400);
 }
-function makePdfLegacy(kind){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF('p', 'mm', 'a4');
-  const activeYear = state.settings.activeYear;
-  
-  const navyColor = [9, 36, 59];
-  const goldColor = [228, 170, 54];
-  
-  const drawHeader = (title) => {
-    doc.setFillColor(...navyColor);
-    doc.rect(0, 0, 210, 32, 'F');
-    
-    doc.setFillColor(...goldColor);
-    doc.rect(0, 32, 210, 2, 'F');
-    
-    if (state.settings.logo) {
-      try {
-        doc.addImage(state.settings.logo, 'PNG', 14, 4, 24, 24);
-      } catch(e) {}
-    }
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('STOS', state.settings.logo ? 42 : 14, 13);
-    doc.setFontSize(9);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(state.settings.school.toUpperCase(), state.settings.logo ? 42 : 14, 19);
-    doc.text(state.settings.tournament, state.settings.logo ? 42 : 14, 24);
-    
-    doc.setTextColor(...navyColor);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(title, 14, 44);
-    
-    doc.setFontSize(9);
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Tahun Aktif: ${activeYear}   |   Tarikh Laporan: ${new Date().toLocaleDateString('ms-MY')}`, 14, 49);
-    
-    doc.setStrokeColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(14, 52, 196, 52);
-  };
-
-  if (kind.includes('students')) {
-    drawHeader('SENARAI MASTER MURID & PENDAFTARAN');
-    let y = 60;
-    
-    doc.setFillColor(241, 245, 249);
-    doc.rect(14, y, 182, 8, 'F');
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('BIB', 16, y + 5.5);
-    doc.text('NAMA MURID', 32, y + 5.5);
-    doc.text('KELAS', 105, y + 5.5);
-    doc.text('RUMAH', 125, y + 5.5);
-    doc.text('KATEGORI', 150, y + 5.5);
-    doc.text('ACARA', 172, y + 5.5);
-    
-    y += 11;
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(15, 23, 42);
-    
-    state.students.forEach(s => {
-      if (y > 275) {
-        doc.addPage();
-        drawHeader('SENARAI MASTER MURID & PENDAFTARAN');
-        y = 60;
-        doc.setFillColor(241, 245, 249);
-        doc.rect(14, y, 182, 8, 'F');
-        doc.setFont('Helvetica', 'bold');
-        doc.text('BIB', 16, y + 5.5);
-        doc.text('NAMA MURID', 32, y + 5.5);
-        doc.text('KELAS', 105, y + 5.5);
-        doc.text('RUMAH', 125, y + 5.5);
-        doc.text('KATEGORI', 150, y + 5.5);
-        doc.text('ACARA', 172, y + 5.5);
-        y += 11;
-        doc.setFont('Helvetica', 'normal');
-      }
-      
-      const regsCount = state.registrations.filter(r => r.studentId === s.id).length;
-      doc.setFont('Helvetica', 'bold');
-      doc.text(s.bib, 16, y);
-      doc.setFont('Helvetica', 'normal');
-      doc.text(s.name.substring(0, 36), 32, y);
-      doc.text(s.className, 105, y);
-      doc.text(s.house, 125, y);
-      doc.text(s.category, 150, y);
-      doc.text(`${regsCount} Acara`, 172, y);
-      
-      doc.setStrokeColor(241, 245, 249);
-      doc.line(14, y + 2.5, 196, y + 2.5);
-      y += 7.5;
-    });
-
-    if (state.students.length === 0) {
-      doc.setFont('Helvetica', 'italic');
-      doc.text('Tiada rekod murid didaftarkan.', 14, y + 5);
-    }
-    
-  } else if (kind.includes('events')) {
-    drawHeader('LAPORAN MASTER ACARA KEJOHANAN');
-    let y = 60;
-    
-    doc.setFillColor(241, 245, 249);
-    doc.rect(14, y, 182, 8, 'F');
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('NO', 16, y + 5.5);
-    doc.text('NAMA ACARA', 32, y + 5.5);
-    doc.text('KATEGORI', 100, y + 5.5);
-    doc.text('JENIS ACARA', 130, y + 5.5);
-    doc.text('PUSINGAN', 160, y + 5.5);
-    
-    y += 11;
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(15, 23, 42);
-    
-    state.events.forEach(e => {
-      if (y > 275) {
-        doc.addPage();
-        drawHeader('LAPORAN MASTER ACARA KEJOHANAN');
-        y = 60;
-        doc.setFillColor(241, 245, 249);
-        doc.rect(14, y, 182, 8, 'F');
-        doc.setFont('Helvetica', 'bold');
-        doc.text('NO', 16, y + 5.5);
-        doc.text('NAMA ACARA', 32, y + 5.5);
-        doc.text('KATEGORI', 100, y + 5.5);
-        doc.text('JENIS ACARA', 130, y + 5.5);
-        doc.text('PUSINGAN', 160, y + 5.5);
-        y += 11;
-        doc.setFont('Helvetica', 'normal');
-      }
-      
-      doc.setFont('Helvetica', 'bold');
-      doc.text(e.no, 16, y);
-      doc.setFont('Helvetica', 'normal');
-      doc.text(e.name, 32, y);
-      doc.text(e.category, 100, y);
-      doc.text(e.type, 130, y);
-      doc.text(e.round, 160, y);
-      
-      doc.setStrokeColor(241, 245, 249);
-      doc.line(14, y + 2.5, 196, y + 2.5);
-      y += 7.5;
-    });
-
-    if (state.events.length === 0) {
-      doc.setFont('Helvetica', 'italic');
-      doc.text('Tiada rekod acara didaftarkan.', 14, y + 5);
-    }
-    
-  } else if (kind.includes('start')) {
-    drawHeader('BORANG ACARA & SUSUNAN LORONG (START LIST)');
-    let y = 60;
-    
-    state.events.forEach(e => {
-      const p = eventRegs(e);
-      if (y > 230) {
-        doc.addPage();
-        drawHeader('BORANG ACARA & SUSUNAN LORONG (START LIST)');
-        y = 60;
-      }
-      
-      doc.setFillColor(248, 250, 252);
-      doc.setStrokeColor(226, 232, 240);
-      doc.rect(14, y, 182, 10, 'FD');
-      
-      doc.setFont('Helvetica', 'bold');
-      doc.setTextColor(...navyColor);
-      doc.setFontSize(9.5);
-      doc.text(`${e.no} - ${e.name} (${e.category}) [ ${e.type} ]`, 18, y + 6.5);
-      y += 15;
-      
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text(e.type === 'Padang' ? 'GILIRAN' : 'LORONG', 18, y);
-      doc.text('BIB', 40, y);
-      doc.text('NAMA ATLET', 65, y);
-      doc.text('RUMAH', 135, y);
-      doc.text(e.type === 'Padang' ? 'PERCUBAAN (CATATAN)' : 'MASA / KEPUTUSAN', 160, y);
-      
-      y += 4;
-      doc.setStrokeColor(226, 232, 240);
-      doc.line(14, y, 196, y);
-      y += 6;
-      
-      doc.setFont('Helvetica', 'normal');
-      doc.setTextColor(15, 23, 42);
-      
-      const count = e.type === 'Merentas Desa' ? p.length : (e.round === 'Separuh Akhir' ? 3 : 6);
-      for (let i = 0; i < Math.max(count, 3); i++) {
-        const s = p[i];
-        doc.text(String(i + 1), 18, y);
-        doc.text(s ? s.bib : '—', 40, y);
-        doc.text(s ? s.name.substring(0, 30) : '— KOSONG —', 65, y);
-        doc.text(s ? s.house : '—', 135, y);
-        doc.text('__________________', 160, y);
-        y += 7;
-      }
-      y += 10;
-    });
-
-    if (state.events.length === 0) {
-      doc.setFont('Helvetica', 'italic');
-      doc.text('Tiada susunan lorong sedia ada kerana tiada acara ditambah.', 14, y + 5);
-    }
-    
-  } else if (kind.includes('standings')) {
-    drawHeader('KEDUDUKAN PINGAT & LEADERBOARD RUMAH');
-    let y = 60;
-    const c = calc();
-    
-    doc.setFillColor(241, 245, 249);
-    doc.rect(14, y, 182, 8, 'F');
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(51, 65, 85);
-    doc.text('KED.', 16, y + 5.5);
-    doc.text('RUMAH SUKAN', 35, y + 5.5);
-    doc.text('EMAS', 80, y + 5.5);
-    doc.text('PERAK', 110, y + 5.5);
-    doc.text('GANGSA', 140, y + 5.5);
-    doc.text('JUMLAH MATA', 170, y + 5.5);
-    
-    y += 12;
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    
-    c.standing.forEach((r, idx) => {
-      doc.text(String(idx + 1), 18, y);
-      doc.text(r.house, 35, y);
-      doc.text(String(r.gold), 82, y);
-      doc.text(String(r.silver), 112, y);
-      doc.text(String(r.bronze), 142, y);
-      doc.text(String(r.points), 172, y);
-      
-      doc.setStrokeColor(226, 232, 240);
-      doc.line(14, y + 2.5, 196, y + 2.5);
-      y += 9;
-    });
-    
-  } else if (kind.includes('results') || kind.includes('winners')) {
-    drawHeader('SENARAI PEMENANG & KEPUTUSAN RASMI');
-    let y = 60;
-    
-    doc.setFillColor(241, 245, 249);
-    doc.rect(14, y, 182, 8, 'F');
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('ACARA', 16, y + 5.5);
-    doc.text('KED', 50, y + 5.5);
-    doc.text('BIB', 62, y + 5.5);
-    doc.text('PEMENANG', 82, y + 5.5);
-    doc.text('RUMAH', 135, y + 5.5);
-    doc.text('PENCAPAIAN', 160, y + 5.5);
-    doc.text('PINGAT', 182, y + 5.5);
-    
-    y += 11;
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(15, 23, 42);
-    
-    const rows = [...state.results].sort((a,b) => (state.events.find(e => e.id === a.eventId)?.no || '').localeCompare(state.events.find(e => e.id === b.eventId)?.no || '') || a.rank - b.rank);
-    
-    rows.forEach(r => {
-      const e = state.events.find(x => x.id === r.eventId);
-      const s = state.students.find(x => x.id === r.studentId);
-      
-      if (y > 275) {
-        doc.addPage();
-        drawHeader('SENARAI PEMENANG & KEPUTUSAN RASMI');
-        y = 60;
-        doc.setFillColor(241, 245, 249);
-        doc.rect(14, y, 182, 8, 'F');
-        doc.setFont('Helvetica', 'bold');
-        doc.text('ACARA', 16, y + 5.5);
-        doc.text('KED', 50, y + 5.5);
-        doc.text('BIB', 62, y + 5.5);
-        doc.text('PEMENANG', 82, y + 5.5);
-        doc.text('RUMAH', 135, y + 5.5);
-        doc.text('PENCAPAIAN', 160, y + 5.5);
-        doc.text('PINGAT', 182, y + 5.5);
-        y += 11;
-        doc.setFont('Helvetica', 'normal');
-      }
-      
-      doc.text(`${e ? e.no : ''}`, 16, y);
-      doc.text(`${r.rank}`, 51, y);
-      doc.text(`${s ? s.bib : ''}`, 62, y);
-      doc.text(`${s ? s.name.substring(0, 24) : ''}`, 82, y);
-      doc.text(`${s ? s.house : ''}`, 135, y);
-      doc.text(`${r.value} ${e?.unit || ''}`, 160, y);
-      doc.setFont('Helvetica', 'bold');
-      doc.text(`${r.medal || '—'}`, 182, y);
-      doc.setFont('Helvetica', 'normal');
-      
-      doc.setStrokeColor(241, 245, 249);
-      doc.line(14, y + 2.5, 196, y + 2.5);
-      y += 7.5;
-    });
-
-    if (rows.length === 0) {
-      doc.setFont('Helvetica', 'italic');
-      doc.text('Tiada keputusan / pemenang direkodkan buat masa ini.', 14, y + 5);
-    }
-    
-  } else if (kind.includes('records')) {
-    drawHeader('REKOD SEKOLAH & SEJARAH KEJOHANAN');
-    let y = 60;
-    
-    doc.setFillColor(241, 245, 249);
-    doc.rect(14, y, 182, 8, 'F');
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('NO ACARA', 16, y + 5.5);
-    doc.text('NAMA ACARA', 38, y + 5.5);
-    doc.text('KATEGORI', 80, y + 5.5);
-    doc.text('PEMEGANG REKOD', 110, y + 5.5);
-    doc.text('CATATAN', 160, y + 5.5);
-    doc.text('TAHUN', 185, y + 5.5);
-    
-    y += 11;
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(15, 23, 42);
-    
-    const rb = state.results.filter(r => r.status==='RB').map(r => {
-      const e = state.events.find(x => x.id === r.eventId);
-      const s = state.students.find(x => x.id === r.studentId);
-      return { no: e?.no, name: e?.name, category: e?.category, holder: s?.name, value: r.value+' '+(e?.unit||'s'), year: activeYear };
-    });
-    const hist = (state.settings.historicalRecords || []).map(r => ({ no: r.no, name: r.name, category: r.category, holder: r.holder, value: r.value, year: r.year }));
-    const allRecords = [...rb, ...hist].sort((a,b) => b.year.localeCompare(a.year) || (a.no||'').localeCompare(b.no||''));
-    
-    allRecords.forEach(r => {
-      if (y > 275) {
-        doc.addPage();
-        drawHeader('REKOD SEKOLAH & SEJARAH KEJOHANAN');
-        y = 60;
-        doc.setFillColor(241, 245, 249);
-        doc.rect(14, y, 182, 8, 'F');
-        doc.setFont('Helvetica', 'bold');
-        doc.text('NO ACARA', 16, y + 5.5);
-        doc.text('NAMA ACARA', 38, y + 5.5);
-        doc.text('KATEGORI', 80, y + 5.5);
-        doc.text('PEMEGANG REKOD', 110, y + 5.5);
-        doc.text('CATATAN', 160, y + 5.5);
-        doc.text('TAHUN', 185, y + 5.5);
-        y += 11;
-        doc.setFont('Helvetica', 'normal');
-      }
-      
-      doc.text(r.no || '—', 16, y);
-      doc.text(r.name || '—', 38, y);
-      doc.text(r.category || '—', 80, y);
-      doc.text(r.holder || '—', 110, y);
-      doc.text(r.value || '—', 160, y);
-      doc.setFont('Helvetica', 'bold');
-      doc.text(r.year || '—', 185, y);
-      doc.setFont('Helvetica', 'normal');
-      
-      doc.setStrokeColor(241, 245, 249);
-      doc.line(14, y + 2.5, 196, y + 2.5);
-      y += 7.5;
-    });
-    
-  } else {
-    drawHeader('LAPORAN RASMI KEJOHANAN');
-    let y = 62;
-    doc.setFontSize(10);
-    doc.setTextColor(15, 23, 42);
-    doc.text('Sila gunakan menu khusus untuk menghasilkan laporan PDF dengan format jadual yang sempurna.', 14, y);
-  }
-  
-  doc.save(`SKSTOS_Laporan_${kind}_${activeYear}.pdf`);
-}
 async function saveSettings(){
  const year=$('#setting-year').value;
  const points=$('#setting-points').value.split(',').map(Number).filter(Number.isFinite).slice(0,10);
  
  const maxIndVal = parseInt($('#setting-max-ind').value, 10);
  const maxRelayVal = parseInt($('#setting-max-relay').value, 10);
+ const maxTrackLanesVal = parseInt($('#setting-max-track-lanes').value, 10);
+ const maxRelayLanesVal = parseInt($('#setting-max-relay-lanes').value, 10);
 
  state.settings.school=$('#setting-school').value.trim();
  state.settings.tournament=$('#setting-tournament').value.trim();
  state.settings.crossPoints=points.length===10?points:[10,9,8,7,6,5,4,3,2,1];
  state.settings.maxIndividualEvents = isNaN(maxIndVal) ? 2 : maxIndVal;
  state.settings.maxRelayEvents = isNaN(maxRelayVal) ? 2 : maxRelayVal;
+ state.settings.maxTrackLanes = isNaN(maxTrackLanesVal) ? 6 : maxTrackLanesVal;
+ state.settings.maxRelayLanes = isNaN(maxRelayLanesVal) ? 6 : maxRelayLanesVal;
  
  const savedHouses = [];
  const savedHouseStyles = {};
