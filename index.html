@@ -126,7 +126,7 @@ const defaultData={
     maxIndividualEvents: 2,
     maxRelayEvents: 2,
     maxTrackLanes: 6,
-    maxRelayLanes: 6
+    maxRelayLanes: 3
   },
   students:[
    {id:'s1',bib:'M001',name:'Muhammad Firdaus',gender:'Lelaki',className:'6 Gemilang',category:'L12TKB',house:'Merah',status:'Aktif'},
@@ -311,7 +311,19 @@ function fairShuffle(items){
  return shuffled;
 }
 function getEventLanes(e) {
-  return e.type === 'Relay' ? (state.settings.maxRelayLanes ?? 6) : (state.settings.maxTrackLanes ?? 6);
+  if (e.type === 'Relay') {
+    return state.settings.maxRelayLanes ?? 3;
+  }
+  if (e.type === 'Balapan') {
+    const match = e.name.match(/(\d+)\s*m/i);
+    if (match) {
+      const distance = parseInt(match[1], 10);
+      if (distance >= 200) {
+        return state.settings.maxRelayLanes ?? 3;
+      }
+    }
+  }
+  return state.settings.maxTrackLanes ?? 6;
 }
 function getEventSeries(e) {
   const participants = eventRegs(e);
@@ -366,7 +378,7 @@ function getRelayLanes(e){
 }
 function createLaneDraw(e){
   const lanes = getEventLanes(e);
-  if(e.type === 'Relay') {
+  if(e.type === 'Relay' || (e.type === 'Balapan' && e.name.match(/(\d+)\s*m/i) && parseInt(e.name.match(/(\d+)\s*m/i)[1], 10) >= 200)) {
     const regs = eventRegs(e);
     const byHouse = {};
     regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
@@ -393,18 +405,18 @@ function createLaneDraw(e){
 }
 function renderDraw(){
  const lanesTrack = state.settings.maxTrackLanes ?? 6;
- const lanesRelay = state.settings.maxRelayLanes ?? 6;
+ const lanesRelay = state.settings.maxRelayLanes ?? 3;
  return `${pageHead('Master Undian','Undian lorong rasmi menggunakan tetapan lorong khusus; urutan ini digunakan oleh Borang Hakim.',action('Cetak Semua','printer','pdf-start','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>{
-    const lanes = e.type === 'Relay' ? lanesRelay : lanesTrack;
+    const lanes = getEventLanes(e);
     const seriesList = getEventSeries(e);
     if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${eventRegs(e).length} peserta</span></div><div class="flex flex-wrap gap-2">${eventRegs(e).map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
     if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
-    if(e.type==='Relay'){
+    if(e.type==='Relay' || lanes === lanesRelay){
       const relayRows=getRelayLanes(e);
       return `<section class="panel p-5">
         <div class="mb-3 flex items-center justify-between">
-          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong max · Acara Berpasukan (Relay)</p></div>
+          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong max</p></div>
           <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
         </div>
         ${miniGrid(relayRows.map(r=>[
@@ -503,7 +515,7 @@ function judgePreview(e){
  const p=laneParticipants(e), rr=state.results.filter(r=>r.eventId===e.id);
  if(e.type==='Padang')return miniGrid(p.map((s,i)=>[i+1,s.bib,s.name,rr.find(r=>r.studentId===s.id)?.value||'—','6 percubaan']),['Giliran','Bib','Atlet','Terbaik','Struktur']);
  if(e.type==='Merentas Desa')return miniGrid(Array.from({length:10},(_,i)=>[i+1,rr.find(r=>r.rank===i+1)?.studentId?state.students.find(s=>s.id===rr.find(r=>r.rank===i+1).studentId)?.bib:'—',10-i]),['Kedudukan','Bib','Mata']);
- if(e.type==='Relay'){
+ if(e.type==='Relay'||getEventLanes(e)===(state.settings.maxRelayLanes??3)){
    const relayRows=getRelayLanes(e);
    return miniGrid(relayRows.map(r=>{
      const repStudent=r.athletes[0];
@@ -511,7 +523,8 @@ function judgePreview(e){
      return [r.lane,r.house,r.athletes.map(a=>a.name).join(', '),res?.value||'—',res?.status||'—'];
    }),['Lorong','Rumah Sukan','Atlet','Masa','Status']);
  }
- return miniGrid(Array.from({length:6},(_,i)=>{const s=p[i],r=s&&rr.find(x=>x.studentId===s.id);return[i+1,s?.bib||'—',s?.name||'Kosong',r?.value||'—',r?.status||'—']}),['Lorong','Bib','Atlet','Masa','Status']);
+ const lanes = getEventLanes(e);
+ return miniGrid(Array.from({length:lanes},(_,i)=>{const s=p[i],r=s&&rr.find(x=>x.studentId===s.id);return[i+1,s?.bib||'—',s?.name||'Kosong',r?.value||'—',r?.status||'—']}),['Lorong','Bib','Atlet','Masa','Status']);
 }
 function renderWinners(){
  const rows=[...state.results].sort((a,b)=>(state.events.find(e=>e.id===a.eventId)?.no||'').localeCompare(state.events.find(e=>e.id===b.eventId)?.no||'')||a.rank-b.rank);
@@ -707,7 +720,7 @@ function renderSettings(){
  const maxInd = state.settings.maxIndividualEvents ?? 2;
  const maxRelay = state.settings.maxRelayEvents ?? 2;
  const maxTrackLanes = state.settings.maxTrackLanes ?? 6;
- const maxRelayLanes = state.settings.maxRelayLanes ?? 6;
+ const maxRelayLanes = state.settings.maxRelayLanes ?? 3;
  return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif, had syarat acara & bilangan lorong.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
  <section class="panel p-6 xl:col-span-2">
@@ -740,8 +753,8 @@ function renderSettings(){
   <label><span class="mb-1 block font-bold">Had Maksimum Acara Individu Seorang Murid</span><input id="setting-max-ind" type="number" min="1" max="6" class="field" value="${maxInd}"></label>
   <label><span class="mb-1 block font-bold">Had Maksimum Acara Relay Seorang Murid</span><input id="setting-max-relay" type="number" min="1" max="6" class="field" value="${maxRelay}"></label>
   <div class="grid grid-cols-2 gap-3">
-    <label><span class="mb-1 block font-bold text-xs">Maks. Lorong Balapan Individu</span><input id="setting-max-track-lanes" type="number" min="2" max="8" class="field" value="${maxTrackLanes}"></label>
-    <label><span class="mb-1 block font-bold text-xs">Maks. Lorong Relay</span><input id="setting-max-relay-lanes" type="number" min="2" max="8" class="field" value="${maxRelayLanes}"></label>
+    <label><span class="mb-1 block font-bold text-xs">Maks. Lorong 100M (Pecutan)</span><input id="setting-max-track-lanes" type="number" min="2" max="8" class="field" value="${maxTrackLanes}"></label>
+    <label><span class="mb-1 block font-bold text-xs">Maks. Lorong 200M/400M/Relay</span><input id="setting-max-relay-lanes" type="number" min="2" max="8" class="field" value="${maxRelayLanes}"></label>
   </div>
   <label><span class="mb-1 block font-bold">Mata Merentas Desa (Top 10)</span><input id="setting-points" class="field" value="${state.settings.crossPoints.join(', ')}"></label>
  </div>
@@ -1181,7 +1194,7 @@ function openRegistration(preEventId = '', preHouse = ''){
 }
 function openJudge(eventId){
  const e=state.events.find(x=>x.id===eventId);
- if(e.type==='Relay'){
+ if(e.type==='Relay' || (e.type==='Balapan' && e.name.match(/(\d+)\s*m/i) && parseInt(e.name.match(/(\d+)\s*m/i)[1], 10) >= 200)){
    const relayRows=getRelayLanes(e);
    const rr=state.results.filter(r=>r.eventId===eventId);
    openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-3">${relayRows.map(r=>{
@@ -1352,12 +1365,12 @@ function makeJudgeFormPdf(e){
   const escPrint = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
   const participants = laneParticipants(e);
   const isField = e.type === 'Padang';
-  const isRelay = e.type === 'Relay';
+  const isRelay = e.type === 'Relay' || (e.type === 'Balapan' && e.name.match(/(\d+)\s*m/i) && parseInt(e.name.match(/(\d+)\s*m/i)[1], 10) >= 200);
   const relayRows = isRelay ? getRelayLanes(e) : [];
   const headers = isField
     ? ['GILIRAN','BIB','ATLET','RUMAH SUKAN','LOMPATAN 1','LOMPATAN 2','LOMPATAN 3','LOMPATAN 4','LOMPATAN 5','LOMPATAN 6','TERBAIK','KEDUDUKAN','CATATAN']
     : isRelay
-      ? ['LORONG','RUMAH SUKAN','PELARI 1','PELARI 2','PELARI 3','PELARI 4','MASA','KEDUDUKAN','CATATAN']
+      ? ['LORONG','RUMAH SUKAN','PELARI/ATLET 1','PELARI/ATLET 2','PELARI/ATLET 3','PELARI/ATLET 4','MASA','KEDUDUKAN','CATATAN']
       : ['LORONG','BIB','ATLET','RUMAH SUKAN','MASA','KEDUDUKAN','CATATAN'];
   const rows = isField
     ? participants.map((s,i)=>[i+1,s.bib,s.name,s.house,'','','','','','','','',''])
@@ -1438,7 +1451,7 @@ async function saveSettings(){
  state.settings.maxIndividualEvents = isNaN(maxIndVal) ? 2 : maxIndVal;
  state.settings.maxRelayEvents = isNaN(maxRelayVal) ? 2 : maxRelayVal;
  state.settings.maxTrackLanes = isNaN(maxTrackLanesVal) ? 6 : maxTrackLanesVal;
- state.settings.maxRelayLanes = isNaN(maxRelayLanesVal) ? 6 : maxRelayLanesVal;
+ state.settings.maxRelayLanes = isNaN(maxRelayLanesVal) ? 3 : maxRelayLanesVal;
  
  const savedHouses = [];
  const savedHouseStyles = {};
@@ -1713,5 +1726,5 @@ $('#year-select').onchange=e=>{
 };
 if (GOOGLE_ID_TOKEN) { initAfterLogin(); } else { renderGoogleLogin(); }
 </script>
-  </body>
+ </body>
 </html>
