@@ -335,7 +335,6 @@ function getEventHeats(e) {
   const lanes = getEventLanes(e);
   const regs = eventRegs(e);
   
-  // Kira bilangan peserta/pasukan yang sah
   let participantCount = regs.length;
   if (e.type === 'Relay') {
     const byHouse = {};
@@ -344,7 +343,6 @@ function getEventHeats(e) {
     participantCount = activeHouses.length;
   }
   
-  // Jika jumlah peserta/pasukan kurang atau sama dengan had lorong, terus jadi Akhir (Direct Final)
   if (participantCount <= lanes) {
     if (e.type === 'Relay') {
       const byHouse = {};
@@ -363,10 +361,16 @@ function getEventHeats(e) {
       }];
     }
 
+    const currentDraw = state.settings.laneDraws?.[e.id];
+    let orderedRegs = regs;
+    if (currentDraw && Array.isArray(currentDraw)) {
+      orderedRegs = currentDraw.map(id => regs.find(s => s.id === id)).filter(Boolean);
+    }
+
     return [{
       heatName: 'Peringkat Akhir (Terus)',
       rows: Array.from({length: lanes}, (_, i) => {
-        const s = regs[i];
+        const s = orderedRegs[i];
         return {
           lane: i + 1,
           bib: s?.bib || '—',
@@ -464,6 +468,31 @@ function createLaneDraw(e){
   const lanes = getEventLanes(e);
   const regs = eventRegs(e);
   
+  if (regs.length === 0) return [];
+
+  // Fungsi pembantu untuk memaksa susunan sentiasa berubah (forced shuffle)
+  const forceShuffle = (items, keyFn) => {
+    if (items.length <= 1) return [...items];
+    let ordered = [...items];
+    let limit = 0;
+    do {
+      ordered = fairShuffle(items);
+      limit++;
+    } while (
+      JSON.stringify(ordered.map(keyFn)) === JSON.stringify(items.map(keyFn)) && 
+      limit < 15
+    );
+    return ordered;
+  };
+
+  // 1. KATEGORI PADANG (Giliran P1 - P6)
+  if (e.type === 'Padang') {
+    const ordered = forceShuffle(regs, s => s.id);
+    if (!state.settings.laneDraws) state.settings.laneDraws = {};
+    state.settings.laneDraws[e.id] = ordered.map(s => s.id);
+    return ordered;
+  }
+
   let participantCount = regs.length;
   if (e.type === 'Relay') {
     const byHouse = {};
@@ -471,39 +500,45 @@ function createLaneDraw(e){
     participantCount = Object.keys(byHouse).filter(h => byHouse[h].length > 0).length;
   }
 
-  if(participantCount <= lanes) {
-    if(e.type === 'Relay') {
+  // 2. KATEGORI PERINGKAT AKHIR TERUS (Direct Final - peserta/pasukan <= had lorong)
+  if (participantCount <= lanes) {
+    if (e.type === 'Relay') {
       const byHouse = {};
       regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
       const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-      if(!state.settings.laneDraws) state.settings.laneDraws = {};
-      state.settings.laneDraws[e.id] = activeHouses;
-      return activeHouses;
+      const shuffledHouses = forceShuffle(activeHouses, h => h);
+      if (!state.settings.laneDraws) state.settings.laneDraws = {};
+      state.settings.laneDraws[e.id] = shuffledHouses;
+      return shuffledHouses;
     }
-    let ordered = fairShuffle(regs);
-    if(!state.settings.laneDraws) state.settings.laneDraws = {};
+    
+    const ordered = forceShuffle(regs, s => s.id);
+    if (!state.settings.laneDraws) state.settings.laneDraws = {};
     state.settings.laneDraws[e.id] = ordered.map(s => s.id);
     return ordered;
   }
 
-  if(e.type === 'Relay') {
+  // 3. KATEGORI SEPARUH AKHIR RELAY
+  if (e.type === 'Relay') {
     const byHouse = {};
     regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
     const activeHouses = Object.keys(byHouse).filter(h => byHouse[h].length > 0);
-    const shuffledHouses = fairShuffle(activeHouses);
+    const shuffledHouses = forceShuffle(activeHouses, h => h);
+    
     const heatGroups = [];
-    for(let i=0; i<shuffledHouses.length; i+=lanes) {
-      heatGroups.push(shuffledHouses.slice(i, i+lanes));
+    for (let i = 0; i < shuffledHouses.length; i += lanes) {
+      heatGroups.push(shuffledHouses.slice(i, i + lanes));
     }
-    if(heatGroups.length === 0) heatGroups.push([]);
-    if(!state.settings.laneDraws) state.settings.laneDraws = {};
+    if (!state.settings.laneDraws) state.settings.laneDraws = {};
     state.settings.laneDraws[e.id] = heatGroups;
     return heatGroups;
   }
-  if(e.type === 'Balapan') {
+  
+  // 4. KATEGORI SEPARUH AKHIR BALAPAN
+  if (e.type === 'Balapan') {
     const byHouse = {};
     regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
-    Object.keys(byHouse).forEach(h => { byHouse[h] = fairShuffle(byHouse[h]); });
+    Object.keys(byHouse).forEach(h => { byHouse[h] = forceShuffle(byHouse[h], s => s.id); });
     const activeHouses = Object.keys(byHouse).filter(h => h.length > 0);
     const numHeats = Math.ceil(regs.length / lanes) || 1;
     const heatGroupsArray = Array.from({length: numHeats}, () => []);
@@ -516,14 +551,15 @@ function createLaneDraw(e){
       });
     });
     
-    const finalizedHeatGroups = heatGroupsArray.map(heatIds => fairShuffle(heatIds));
-    if(!state.settings.laneDraws) state.settings.laneDraws = {};
+    const finalizedHeatGroups = heatGroupsArray.map(heatIds => forceShuffle(heatIds, id => id));
+    if (!state.settings.laneDraws) state.settings.laneDraws = {};
     state.settings.laneDraws[e.id] = finalizedHeatGroups;
     return finalizedHeatGroups;
   }
-  let ordered=fairShuffle(regs);
-  if(!state.settings.laneDraws)state.settings.laneDraws={};
-  state.settings.laneDraws[e.id]=ordered.map(s=>s.id);
+
+  let ordered = forceShuffle(regs, s => s.id);
+  if (!state.settings.laneDraws) state.settings.laneDraws = {};
+  state.settings.laneDraws[e.id] = ordered.map(s => s.id);
   return ordered;
 }
 
