@@ -125,13 +125,14 @@ const defaultData={
  activities:['Sistem dimulakan dengan data simulasi awal.'],
  recycleBin:[]
 };
+const now=()=>new Date().toISOString();
+
 let state=structuredClone(defaultData), records=[], currentView='dashboard', busy=false, filters={search:'',house:'Semua'}, pendingDelete=null;
 state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:now()}];
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const uid=p=>p+Math.random().toString(36).slice(2,9);
-const now=()=>new Date().toISOString();
 function iconRefresh(){if(window.lucide) lucide.createIcons()}
 function toast(message,type='ok'){
  const el=document.createElement('div'); el.className=`toast rounded-xl border p-4 shadow-xl ${type==='error'?'border-red-200 bg-red-50 text-red-800':'border-emerald-200 bg-white text-slate-800'}`;
@@ -1649,109 +1650,55 @@ const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbyskxCngO_Ebz
 
 // Sambungan GitHub Pages -> Google Apps Script menggunakan JSONP untuk GET
 // dan hidden form POST untuk elak masalah CORS / "Failed to fetch".
-function apiGet() {
-  return new Promise((resolve, reject) => {
-    if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
-      reject(new Error('URL Google Apps Script belum ditetapkan.'));
-      return;
-    }
+async function apiGet() {
+  if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
+    throw new Error('URL Google Apps Script belum ditetapkan.');
+  }
 
-    const callbackName = '__stos_jsonp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    const script = document.createElement('script');
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('Masa sambungan ke Google Sheets tamat.'));
-    }, 20000);
-
-    function cleanup() {
-      clearTimeout(timeout);
-      try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
-      script.remove();
-    }
-
-    window[callbackName] = (json) => {
-      cleanup();
-      if (!json || !json.ok) {
-        reject(new Error(json?.error || 'Gagal membaca Google Sheets.'));
-        return;
-      }
-      resolve(json.records || []);
-    };
-
-    script.onerror = () => {
-      cleanup();
-      reject(new Error('Google Apps Script tidak dapat dicapai. Pastikan deployment Web App masih aktif.'));
-    };
-
-    script.src = `${GOOGLE_SHEETS_API}?action=read&callback=${encodeURIComponent(callbackName)}&_=${Date.now()}`;
-    document.head.appendChild(script);
+  const res = await fetch(`${GOOGLE_SHEETS_API}?action=read&_=${Date.now()}`, {
+    method: 'GET',
+    redirect: 'follow',
+    credentials: 'include',
+    cache: 'no-store'
   });
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const json = await res.json();
+
+  if (!json.ok) {
+    throw new Error(json.error || 'Gagal membaca Google Sheets.');
+  }
+
+  return json.records || [];
 }
 
-function apiPost(payload) {
-  return new Promise((resolve, reject) => {
-    if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
-      reject(new Error('URL Google Apps Script belum ditetapkan.'));
-      return;
-    }
+async function apiPost(payload) {
+  if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) {
+    throw new Error('URL Google Apps Script belum ditetapkan.');
+  }
 
-    const frameName = '__stos_post_frame_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    const iframe = document.createElement('iframe');
-    iframe.name = frameName;
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = GOOGLE_SHEETS_API;
-    form.target = frameName;
-    form.enctype = 'application/x-www-form-urlencoded';
-    form.style.display = 'none';
-
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'payload';
-    input.value = JSON.stringify(payload);
-    form.appendChild(input);
-    document.body.appendChild(form);
-
-    let finished = false;
-    const cleanup = () => {
-      if (form.parentNode) form.parentNode.removeChild(form);
-      setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 300);
-    };
-
-    const failTimer = setTimeout(() => {
-      if (finished) return;
-      finished = true;
-      cleanup();
-      reject(new Error('Masa menyimpan ke Google Sheets tamat.'));
-    }, 30000);
-
-    // Elakkan onload awal iframe (about:blank) daripada dianggap sebagai
-    // respons POST. Tunggu sedikit sebelum memasang listener dan submit.
-    setTimeout(() => {
-      iframe.onload = () => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(failTimer);
-        cleanup();
-        resolve({ ok: true });
-      };
-
-      iframe.onerror = () => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(failTimer);
-        cleanup();
-        reject(new Error('Gagal menghantar data ke Google Sheets.'));
-      };
-
-      form.submit();
-    }, 100);
+  const res = await fetch(GOOGLE_SHEETS_API, {
+    method: 'POST',
+    redirect: 'follow',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(payload)
   });
-}
 
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const json = await res.json();
+
+  if (!json.ok) {
+    throw new Error(json.error || 'Gagal menyimpan ke Google Sheets.');
+  }
+
+  return json;
+}
 
 function defaultCompetitionId(year){return `KJ-${year}-001`;}
 function normalizeRecords(data){
