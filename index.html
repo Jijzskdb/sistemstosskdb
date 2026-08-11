@@ -126,6 +126,7 @@ const defaultData={
     maxIndividualEvents: 2,
     maxRelayEvents: 2,
     maxTrackLanes: 6,
+    maxLongTrackLanes: 4,
     maxRelayLanes: 6
   },
   students:[
@@ -311,7 +312,18 @@ function fairShuffle(items){
  return shuffled;
 }
 function getEventLanes(e) {
-  return e.type === 'Relay' ? (state.settings.maxRelayLanes ?? 6) : (state.settings.maxTrackLanes ?? 6);
+  if (e.type === 'Relay') return state.settings.maxRelayLanes ?? 6;
+  if (e.type === 'Balapan') {
+    const name = (e.name || '').toUpperCase();
+    const match = name.match(/(\d+)\s*M/);
+    if (match) {
+      const distance = parseInt(match[1], 10);
+      if (distance >= 200) {
+        return state.settings.maxLongTrackLanes ?? 4;
+      }
+    }
+  }
+  return state.settings.maxTrackLanes ?? 6;
 }
 function laneParticipants(e){
  const current=state.settings.laneDraws?.[e.id];
@@ -374,10 +386,11 @@ function createLaneDraw(e){
 }
 function renderDraw(){
  const lanesTrack = state.settings.maxTrackLanes ?? 6;
+ const lanesLongTrack = state.settings.maxLongTrackLanes ?? 4;
  const lanesRelay = state.settings.maxRelayLanes ?? 6;
- return `${pageHead('Master Undian','Undian lorong rasmi menggunakan tetapan lorong khusus; urutan ini digunakan oleh Borang Hakim.',action('Cetak Semua','printer','pdf-start','btn-primary'))}
+ return `${pageHead('Master Undian','Undian lorong rasmi mengikut tetapan lorong khusus balapan & jarak; urutan ini digunakan oleh Borang Hakim.',action('Cetak Semua','printer','pdf-start','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>{
-    const lanes = e.type === 'Relay' ? lanesRelay : lanesTrack;
+    const lanes = getEventLanes(e);
     if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${eventRegs(e).length} peserta</span></div><div class="flex flex-wrap gap-2">${eventRegs(e).map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
     if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
     if(e.type==='Relay'){
@@ -394,7 +407,7 @@ function renderDraw(){
         ]),['Lorong','Rumah Sukan','Senarai Atlet / Pelari'])}
       </section>`;
     }
-    return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong max · Urutan rasmi</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(Array.from({length:lanes},(_,i)=>[i+1,laneParticipants(e)[i]?.bib||'—',laneParticipants(e)[i]?.name||'Kosong',laneParticipants(e)[i]?.house||'—']),['Lorong','Bib','Atlet','Rumah'])}</section>`;
+    return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${e.round} · ${lanes} lorong max (Had Spesifik) · Urutan rasmi</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(Array.from({length:lanes},(_,i)=>[i+1,laneParticipants(e)[i]?.bib||'—',laneParticipants(e)[i]?.name||'Kosong',laneParticipants(e)[i]?.house||'—']),['Lorong','Bib','Atlet','Rumah'])}</section>`;
  }).join('')}</div>`;
 }
 function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
@@ -688,6 +701,7 @@ function renderSettings(){
  const maxInd = state.settings.maxIndividualEvents ?? 2;
  const maxRelay = state.settings.maxRelayEvents ?? 2;
  const maxTrackLanes = state.settings.maxTrackLanes ?? 6;
+ const maxLongTrackLanes = state.settings.maxLongTrackLanes ?? 4;
  const maxRelayLanes = state.settings.maxRelayLanes ?? 6;
  return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif, had syarat acara & bilangan lorong.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
@@ -720,9 +734,10 @@ function renderSettings(){
  <div class="space-y-4">
   <label><span class="mb-1 block font-bold">Had Maksimum Acara Individu Seorang Murid</span><input id="setting-max-ind" type="number" min="1" max="6" class="field" value="${maxInd}"></label>
   <label><span class="mb-1 block font-bold">Had Maksimum Acara Relay Seorang Murid</span><input id="setting-max-relay" type="number" min="1" max="6" class="field" value="${maxRelay}"></label>
-  <div class="grid grid-cols-2 gap-3">
-    <label><span class="mb-1 block font-bold text-xs">Maks. Lorong Balapan (200m dll)</span><input id="setting-max-track-lanes" type="number" min="2" max="8" class="field" value="${maxTrackLanes}"></label>
-    <label><span class="mb-1 block font-bold text-xs">Maks. Lorong Relay</span><input id="setting-max-relay-lanes" type="number" min="2" max="8" class="field" value="${maxRelayLanes}"></label>
+  <div class="grid grid-cols-3 gap-2">
+    <label><span class="mb-1 block font-bold text-xs">Lorong Balapan (100m, 80m)</span><input id="setting-max-track-lanes" type="number" min="2" max="8" class="field" value="${maxTrackLanes}"></label>
+    <label><span class="mb-1 block font-bold text-xs">Lorong Balapan (200m & Ke Atas)</span><input id="setting-max-long-track-lanes" type="number" min="2" max="8" class="field" value="${maxLongTrackLanes}"></label>
+    <label><span class="mb-1 block font-bold text-xs">Lorong Relay</span><input id="setting-max-relay-lanes" type="number" min="2" max="8" class="field" value="${maxRelayLanes}"></label>
   </div>
   <label><span class="mb-1 block font-bold">Mata Merentas Desa (Top 10)</span><input id="setting-points" class="field" value="${state.settings.crossPoints.join(', ')}"></label>
  </div>
@@ -1414,6 +1429,7 @@ async function saveSettings(){
  const maxIndVal = parseInt($('#setting-max-ind').value, 10);
  const maxRelayVal = parseInt($('#setting-max-relay').value, 10);
  const maxTrackLanesVal = parseInt($('#setting-max-track-lanes').value, 10);
+ const maxLongTrackLanesVal = parseInt($('#setting-max-long-track-lanes').value, 10);
  const maxRelayLanesVal = parseInt($('#setting-max-relay-lanes').value, 10);
 
  state.settings.school=$('#setting-school').value.trim();
@@ -1422,6 +1438,7 @@ async function saveSettings(){
  state.settings.maxIndividualEvents = isNaN(maxIndVal) ? 2 : maxIndVal;
  state.settings.maxRelayEvents = isNaN(maxRelayVal) ? 2 : maxRelayVal;
  state.settings.maxTrackLanes = isNaN(maxTrackLanesVal) ? 6 : maxTrackLanesVal;
+ state.settings.maxLongTrackLanes = isNaN(maxLongTrackLanesVal) ? 4 : maxLongTrackLanesVal;
  state.settings.maxRelayLanes = isNaN(maxRelayLanesVal) ? 6 : maxRelayLanesVal;
  
  const savedHouses = [];
