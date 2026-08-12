@@ -105,7 +105,7 @@
   <script>
 const NAV=[
   ['dashboard','layout-dashboard','Dashboard'],['students','users','Master Murid'],['events','trophy','Master Acara'],
-  ['draw','shuffle','Master Undian'],['registration','clipboard-plus','Pendaftaran Atlet'],['judges','clipboard-check','Borang Hakim'],
+  ['draw','shuffle','Master Undian'],['schedule','calendar','Jadual & Call Room'],['registration','clipboard-plus','Pendaftaran Atlet'],['judges','clipboard-check','Borang Hakim'],
   ['winners','medal','Senarai Pemenang'],['standings','bar-chart-3','Kedudukan Pingat'],['records','award','Rekod Sekolah'],
   ['analysis','pie-chart','Analisis'],['settings','settings','Tetapan'],['archive','trash-2','Tong Kitar Semula']
 ];
@@ -136,10 +136,10 @@ const defaultData={
    {id:'s4',bib:'K001',name:'Siti Aminah',gender:'Perempuan',className:'6 Gemilang',category:'P12TKB',house:'Kuning',status:'Aktif'}
   ],
   events:[
-   {id:'e1',no:'P01',name:'LOMPAT JAUH P9TKB',category:'P9TKB',type:'Padang',status:'Belum Mula',record:0,unit:'m'},
-   {id:'e2',no:'B09',name:'100M P9TKB',category:'P9TKB',type:'Balapan',status:'Belum Mula',record:0,unit:'s'},
-   {id:'e3',no:'R19',name:'4X100M P9TKB',category:'P9TKB',type:'Relay',status:'Belum Mula',record:0,unit:'s'},
-   {id:'e4',no:'MD26',name:'MERENTAS DESA P12TKB',category:'P12TKB',type:'Merentas Desa',status:'Belum Mula',record:0,unit:'s'}
+   {id:'e1',no:'P01',name:'LOMPAT JAUH P9TKB',category:'P9TKB',type:'Padang',status:'Belum Mula',record:0,unit:'m', date:'2026-05-08', startTime:'08:00', reportTime:'07:30', lastCallTime:'07:40', arenaTime:'07:50'},
+   {id:'e2',no:'B09',name:'100M P9TKB',category:'P9TKB',type:'Balapan',status:'Belum Mula',record:0,unit:'s', date:'2026-05-08', startTime:'08:30', reportTime:'08:00', lastCallTime:'08:10', arenaTime:'08:20'},
+   {id:'e3',no:'R19',name:'4X100M P9TKB',category:'P9TKB',type:'Relay',status:'Belum Mula',record:0,unit:'s', date:'2026-05-08', startTime:'09:00', reportTime:'08:30', lastCallTime:'08:40', arenaTime:'08:50'},
+   {id:'e4',no:'MD26',name:'MERENTAS DESA P12TKB',category:'P12TKB',type:'Merentas Desa',status:'Belum Mula',record:0,unit:'s', date:'2026-05-09', startTime:'07:30', reportTime:'07:00', lastCallTime:'07:10', arenaTime:'07:20'}
   ],
   registrations:[
    {id:'r1',studentId:'s1',eventId:'e4'},
@@ -157,7 +157,7 @@ let state=structuredClone(defaultData), records=[], currentView='dashboard', bus
 state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:new Date().toISOString()}];
 
 const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;ummer'[m]||m}));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]||m));
 const uid=p=>p+Math.random().toString(36).slice(2,9);
 const now=()=>new Date().toISOString();
 function iconRefresh(){if(window.lucide) lucide.createIcons()}
@@ -186,7 +186,7 @@ function pageHead(title,desc,actions=''){return `<div class="mb-6 flex flex-col 
 const action=(label,icon,act,kind='btn-soft')=>`<button type="button" data-action="${act}" class="btn ${kind}"><i data-lucide="${icon}" class="h-4 w-4"></i>${label}</button>`;
 function render(){
  const label=NAV.find(n=>n[0]===currentView)?.[2]||'Dashboard'; $('#view-title').textContent=label;
- const fn={dashboard:renderDashboard,students:renderStudents,events:renderEvents,draw:renderDraw,registration:renderRegistration,judges:renderJudges,winners:renderWinners,standings:renderStandings,records:renderRecords,analysis:renderAnalysis,settings:renderSettings,archive:renderArchive}[currentView];
+ const fn={dashboard:renderDashboard,students:renderStudents,events:renderEvents,draw:renderDraw,schedule:renderSchedule,registration:renderRegistration,judges:renderJudges,winners:renderWinners,standings:renderStandings,records:renderRecords,analysis:renderAnalysis,settings:renderSettings,archive:renderArchive}[currentView];
  $('#view').innerHTML=fn(); bindView(); iconRefresh();
 }
 function renderDashboard(){
@@ -490,6 +490,134 @@ function renderDraw(){
  }).join('')}</div>`;
 }
 function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${(typeof c==='string'&&c.includes('<')&&c.includes('>'))?c:esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+
+function renderSchedule(){
+  // Gather all scheduled entries from events (SSOT)
+  let entries = state.events.map(e => {
+    const regs = eventRegs(e);
+    let bilPeserta = regs.length;
+    if(e.type === 'Relay'){
+      const byHouse = {};
+      regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
+      bilPeserta = Object.keys(byHouse).filter(h => byHouse[h].length > 0).length;
+    }
+    return {
+      id: e.id,
+      no: e.no,
+      name: e.name,
+      category: e.category,
+      type: e.type,
+      status: e.status || 'Belum Mula',
+      date: e.date || '2026-05-08',
+      startTime: e.startTime || '08:00',
+      reportTime: e.reportTime || '07:30',
+      lastCallTime: e.lastCallTime || '07:40',
+      arenaTime: e.arenaTime || '07:50',
+      bilPeserta
+    };
+  });
+
+  // Sort by Date then Start Time
+  entries.sort((a,b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+
+  // Group by Date
+  const grouped = {};
+  entries.forEach(item => {
+    (grouped[item.date] ||= []).push(item);
+  });
+
+  let sectionsHtml = Object.keys(grouped).sort().map((dateKey, idx) => {
+    const dateItems = grouped[dateKey];
+    return `
+    <div class="space-y-3 mb-6">
+      <div class="flex items-center gap-2 border-b-2 border-[#146b8c] pb-2 bg-amber-100/50 px-3 py-2 rounded-t-lg">
+        <i data-lucide="calendar" class="h-5 w-5 text-[#146b8c]"></i>
+        <h3 class="font-['Fraunces'] text-lg font-bold text-[#10243e]">HARI ${idx + 1} (${dateKey})</h3>
+      </div>
+      <div class="panel overflow-hidden shadow-sm">
+        <div class="table-wrap">
+          <table class="data-table text-center">
+            <thead>
+              <tr>
+                <th rowspan="2" class="align-middle">NO ACARA</th>
+                <th rowspan="2" class="align-middle">KATEGORI</th>
+                <th rowspan="2" class="align-middle text-left">ACARA & JENIS</th>
+                <th rowspan="2" class="align-middle">BIL PESERTA</th>
+                <th colspan="4" class="text-center border-b border-slate-200 bg-slate-100/70">ALIRAN DISIPLIN MASA PESERTA</th>
+                <th rowspan="2" class="align-middle">STATUS</th>
+                <th rowspan="2" class="align-middle">TINDAKAN</th>
+              </tr>
+              <tr>
+                <th class="bg-slate-50 text-xs py-1 text-amber-800 font-bold">LAPOR DIRI</th>
+                <th class="bg-slate-50 text-xs py-1">PANGGILAN AKHIR</th>
+                <th class="bg-slate-50 text-xs py-1">MASUK ARENA</th>
+                <th class="bg-slate-50 text-xs py-1 text-[#146b8c] font-bold">MASA BERTANDING</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${dateItems.map(item => {
+                let statusBadge = `<span class="badge bg-slate-100 text-slate-600 font-bold">Belum Mula</span>`;
+                if(item.status === 'Selesai') {
+                  statusBadge = `<span class="badge bg-emerald-50 text-emerald-700 font-bold">Selesai</span>`;
+                } else if(item.status === 'Sedang Berlangsung') {
+                  statusBadge = `<span class="badge bg-sky-50 text-sky-700 font-bold">Sedang Berlangsung</span>`;
+                }
+                return `<tr>
+                  <td class="font-bold text-slate-700">${esc(item.no)}</td>
+                  <td><span class="badge bg-slate-100 text-slate-700">${esc(item.category)}</span></td>
+                  <td class="text-left font-bold">${esc(item.name)} <span class="badge bg-sky-50 text-sky-700 ml-1 text-xs">${esc(item.type)}</span></td>
+                  <td><span class="badge bg-sky-50 text-sky-800 font-bold">${item.bilPeserta}</span></td>
+                  <td class="font-bold text-amber-700 bg-amber-50/30">${esc(item.reportTime)}</td>
+                  <td>${esc(item.lastCallTime)}</td>
+                  <td>${esc(item.arenaTime)}</td>
+                  <td class="font-extrabold text-[#146b8c] bg-sky-50/30">${esc(item.startTime)}</td>
+                  <td>${statusBadge}</td>
+                  <td><button type="button" data-action="edit-schedule-time" data-id="${item.id}" class="btn btn-soft !py-1 !px-2 text-xs"><i data-lucide="clock" class="h-3 w-3 inline mr-1"></i> Kemaskini Masa</button></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding (Tarik Auto dari Master Acara).')}
+  ${sectionsHtml || '<p class="p-10 text-center text-slate-500">Tiada jadual acara direkodkan.</p>'}`;
+}
+
+function openScheduleEdit(eventId){
+  const e = state.events.find(x => x.id === eventId);
+  if(!e) return;
+  openModal(`Kemaskini Masa · ${e.no} ${e.name}`, `
+    <form id="schedule-edit-form" class="space-y-4">
+      <input type="hidden" id="se-id" value="${e.id}">
+      <label class="block"><span class="font-bold text-sm mb-1 block">Tarikh Acara</span><input id="se-date" type="date" class="field" value="${e.date || '2026-05-08'}" required></label>
+      <label class="block"><span class="font-bold text-sm mb-1 block text-[#146b8c]">Masa Bertanding (Start Time)</span><input id="se-start" type="time" class="field" value="${e.startTime || '08:00'}" required></label>
+      <label class="block"><span class="font-bold text-sm mb-1 block text-amber-800">Masa Lapor Diri (Report Time)</span><input id="se-report" type="time" class="field" value="${e.reportTime || '07:30'}" required></label>
+      <label class="block"><span class="font-bold text-sm mb-1 block">Panggilan Akhir (Last Call)</span><input id="se-last" type="time" class="field" value="${e.lastCallTime || '07:40'}" required></label>
+      <label class="block"><span class="font-bold text-sm mb-1 block">Masuk Arena (Call Room)</span><input id="se-arena" type="time" class="field" value="${e.arenaTime || '07:50'}" required></label>
+      <button class="btn btn-primary w-full mt-2" type="submit">Simpan Masa Acara</button>
+    </form>
+  `);
+
+  $('#schedule-edit-form').onsubmit = async ev => {
+    ev.preventDefault();
+    const id = $('#se-id').value;
+    const evObj = state.events.find(x => x.id === id);
+    if(evObj){
+      evObj.date = $('#se-date').value;
+      evObj.startTime = $('#se-start').value;
+      evObj.reportTime = $('#se-report').value;
+      evObj.lastCallTime = $('#se-last').value;
+      evObj.arenaTime = $('#se-arena').value;
+      await saveTypes(['events']);
+      closeModal();
+      render();
+      toast('Masa acara berjaya dikemaskini.');
+    }
+  };
+}
 
 function renderRegistration(){
   const active=new Set(state.registrations.map(r=>r.studentId));
@@ -1128,6 +1256,7 @@ async function handleAction(a,b){
    if(e){createLaneDraw(e);await saveTypes(['settings']);toast('Undian lorong rasmi berjaya dijana.');render();}
    return;
  }
+ if(a==='edit-schedule-time'){ openScheduleEdit(b.dataset.id); return; }
  if(a==='judge-event'){openJudge(b.dataset.id);return}
  if(a==='print-judge-form'){const e=state.events.find(x=>x.id===b.dataset.id);if(e)makeJudgeFormPdf(e);return}
  if(a==='tab-active'){$('#audit-table').innerHTML=auditTable(state.students.filter(s=>calc().active.has(s.id)),true);return}
@@ -1245,7 +1374,7 @@ function bindStudentForm(){
  await saveTypes(['students','registrations']);closeModal();render();};
 }
 function bindEventForm(){
- $('#event-form').onsubmit=async ev=>{ev.preventDefault();const id=$('#ef-id').value,old=state.events.find(x=>x.id===id);const item={id:id||uid('e'),no:$('#ef-no').value,name:$('#ef-name').value,category:$('#ef-category').value,type:$('#ef-type').value,status:old?.status||'Belum Mula',record:old?.record||0,unit:old?.unit||'s'};if(old)Object.assign(old,item);else state.events.push(item);await saveTypes(['events']);closeModal();render()};
+ $('#event-form').onsubmit=async ev=>{ev.preventDefault();const id=$('#ef-id').value,old=state.events.find(x=>x.id===id);const item={id:id||uid('e'),no:$('#ef-no').value,name:$('#ef-name').value,category:$('#ef-category').value,type:$('#ef-type').value,status:old?.status||'Belum Mula',record:old?.record||0,unit:old?.unit||'s', date:old?.date||'2026-05-08', startTime:old?.startTime||'08:00', reportTime:old?.reportTime||'07:30', lastCallTime:old?.lastCallTime||'07:40', arenaTime:old?.arenaTime||'07:50'};if(old)Object.assign(old,item);else state.events.push(item);await saveTypes(['events']);closeModal();render()};
 }
 function openRegistration(preEventId = '', preHouse = ''){
  const targetHouse = preHouse || registrationHouseFilter;
@@ -1597,7 +1726,7 @@ async function importEvents(ev){
   else if (rawType.includes('MERENTAS') || rawType.includes('DESA')) type = 'Merentas Desa';
   else if (rawType.includes('RELAY') || rawType.includes('KUMPULAN')) type = 'Relay';
 
-  state.events.push({id:uid('e'),no:String(no).trim(),name:String(name).trim(),category:String(r['KATEGORI']||r.Kategori||r.Category||'L12').trim(),type,status:'Belum Mula',record:0,unit:type==='Padang'?'m':'s'});
+  state.events.push({id:uid('e'),no:String(no).trim(),name:String(name).trim(),category:String(r['KATEGORI']||r.Kategori||r.Category||'L12').trim(),type,status:'Belum Mula',record:0,unit:type==='Padang'?'m':'s', date:'2026-05-08', startTime:'08:00', reportTime:'07:30', lastCallTime:'07:40', arenaTime:'07:50'});
   added++
  });await saveTypes(['events']);toast(`${added} acara berjaya diimport.`);render()}catch{toast('Fail tidak dapat dibaca. Semak format Excel.','error')}finally{ev.target.value=''}
 }
@@ -1858,69 +1987,69 @@ const GOOGLE_CLIENT_ID = '49002389927-a24h4d464jtu385khpc5jf119c9iec8v.apps.goog
 let GOOGLE_ID_TOKEN = sessionStorage.getItem('stos_google_id_token') || '';
 
 function showAuthMessage(message) {
-  const el = $('#auth-message');
-  if (!el) return;
-  el.textContent = message;
-  el.className = 'mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700';
+ const el = $('#auth-message');
+ if (!el) return;
+ el.textContent = message;
+ el.className = 'mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700';
 }
 
 async function handleCredentialResponse(response) {
-  if (!response || !response.credential) {
-    showAuthMessage('Google Sign-In tidak menghasilkan token yang sah.');
-    return;
-  }
+ if (!response || !response.credential) {
+   showAuthMessage('Google Sign-In tidak menghasilkan token yang sah.');
+   return;
+ }
 
-  GOOGLE_ID_TOKEN = response.credential;
-  sessionStorage.setItem('stos_google_id_token', GOOGLE_ID_TOKEN);
-  showAuthMessage('Mengesahkan akaun Google dan menyemak STOS_USERS…');
-  await initAfterLogin();
+ GOOGLE_ID_TOKEN = response.credential;
+ sessionStorage.setItem('stos_google_id_token', GOOGLE_ID_TOKEN);
+ showAuthMessage('Mengesahkan akaun Google dan menyemak STOS_USERS…');
+ await initAfterLogin();
 }
 
 function renderGoogleLogin() {
-  const target = $('#google-signin');
-  if (!target) return;
-  if (!(window.google && google.accounts && google.accounts.id)) { setTimeout(renderGoogleLogin, 250); return; }
-  google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:handleCredentialResponse,auto_select:false,cancel_on_tap_outside:false});
-  google.accounts.id.renderButton(target,{theme:'outline',size:'large',type:'standard',text:'signin_with',shape:'rectangular',width:280});
+ const target = $('#google-signin');
+ if (!target) return;
+ if (!(window.google && google.accounts && google.accounts.id)) { setTimeout(renderGoogleLogin, 250); return; }
+ google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:handleCredentialResponse,auto_select:false,cancel_on_tap_outside:false});
+ google.accounts.id.renderButton(target,{theme:'outline',size:'large',type:'standard',text:'signin_with',shape:'rectangular',width:280});
 }
 
 function clearGoogleSession() {
-  GOOGLE_ID_TOKEN = '';
-  sessionStorage.removeItem('stos_google_id_token');
+ GOOGLE_ID_TOKEN = '';
+ sessionStorage.removeItem('stos_google_id_token');
 }
 
 async function apiGet() {
-  if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) throw new Error('URL Google Apps Script belum ditetapkan.');
-  if (!GOOGLE_ID_TOKEN) throw new Error('Sila log masuk Google terlebih dahulu.');
+ if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) throw new Error('URL Google Apps Script belum ditetapkan.');
+ if (!GOOGLE_ID_TOKEN) throw new Error('Sila log masuk Google terlebih dahulu.');
 
-  const res = await fetch(GOOGLE_SHEETS_API, {
-    method:'POST',
-    redirect:'follow',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({action:'read', idToken:GOOGLE_ID_TOKEN})
-  });
+ const res = await fetch(GOOGLE_SHEETS_API, {
+   method:'POST',
+   redirect:'follow',
+   headers:{'Content-Type':'text/plain;charset=utf-8'},
+   body:JSON.stringify({action:'read', idToken:GOOGLE_ID_TOKEN})
+ });
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'Gagal membaca Google Sheets.');
-  return json.records || [];
+ if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ const json = await res.json();
+ if (!json.ok) throw new Error(json.error || 'Gagal membaca Google Sheets.');
+ return json.records || [];
 }
 
 async function apiPost(payload) {
-  if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) throw new Error('URL Google Apps Script belum ditetapkan.');
-  if (!GOOGLE_ID_TOKEN) throw new Error('Sila log masuk Google terlebih dahulu.');
+ if (!GOOGLE_SHEETS_API || GOOGLE_SHEETS_API.includes('PASTE_APPS_SCRIPT')) throw new Error('URL Google Apps Script belum ditetapkan.');
+ if (!GOOGLE_ID_TOKEN) throw new Error('Sila log masuk Google terlebih dahulu.');
 
-  const res = await fetch(GOOGLE_SHEETS_API, {
-    method:'POST',
-    redirect:'follow',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({...payload, idToken:GOOGLE_ID_TOKEN})
-  });
+ const res = await fetch(GOOGLE_SHEETS_API, {
+   method:'POST',
+   redirect:'follow',
+   headers:{'Content-Type':'text/plain;charset=utf-8'},
+   body:JSON.stringify({...payload, idToken:GOOGLE_ID_TOKEN})
+ });
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'Gagal menyimpan ke Google Sheets.');
-  return json;
+ if (!res.ok) throw new Error(`HTTP ${res.status}`);
+ const json = await res.json();
+ if (!json.ok) throw new Error(json.error || 'Gagal menyimpan ke Google Sheets.');
+ return json;
 }
 
 function defaultCompetitionId(year){return `KJ-${year}-001`;}
