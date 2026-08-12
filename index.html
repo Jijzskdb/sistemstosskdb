@@ -147,8 +147,8 @@ const defaultData={
    {id:'r3',studentId:'s4',eventId:'e4'}
   ],
   results:[
-   {id:'x1',eventId:'e4',studentId:'s1',value:1,rank:1,status:'SAH',medal:'Emas',points:10},
-   {id:'x2',eventId:'e4',studentId:'s2',value:2,rank:2,status:'SAH',medal:'Perak',points:9}
+   {id:'x1',eventId:'e4',studentId:'s1',value:14.22,rank:1,status:'SAH',medal:'Emas',points:10},
+   {id:'x2',eventId:'e4',studentId:'s2',value:15.05,rank:2,status:'SAH',medal:'Perak',points:9}
   ],
   activities:['Sistem dimulakan dengan data simulasi awal.'],
   recycleBin:[]
@@ -599,8 +599,8 @@ function judgePreview(e){
      const rank = i + 1;
      const rRes = rr.find(r=>r.rank === rank);
      const student = rRes ? state.students.find(s=>s.id === rRes.studentId) : null;
-     return [rank, student ? student.bib : '—', student ? student.name : '—', crossPoints[i] || 0];
-   }),['Kedudukan (Rank)','Bib','Nama Peserta','Mata']);
+     return [rank, student ? student.bib : '—', student ? student.name : '—', rRes?.value || '—', crossPoints[i] || 0];
+   }),['Kedudukan','Bib','Nama Peserta','Masa','Mata']);
  }
  
  if(e.type==='Relay' || e.type==='Balapan'){
@@ -1430,15 +1430,18 @@ function openJudge(eventId){
     
     openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-3">${regs.map(s => {
       const rRes = rr.find(x => x.studentId === s.id);
-      return `<div class="rounded-xl border p-3 flex items-center justify-between gap-3"><div class="min-w-0 flex-1"><b>${s.bib} · ${s.name}</b><p class="text-xs text-slate-500">Rumah: ${s.house}</p></div><div class="w-32"><label class="text-xs block mb-1">Kedudukan (Rank)</label><input data-xc-student="${s.id}" type="number" min="1" class="field !p-2" placeholder="Cth: 1" value="${rRes?.rank || ''}"></div></div>`;
+      const timeVal = rRes?.value && rRes.value !== rRes.rank ? rRes.value : '';
+      return `<div class="rounded-xl border p-3 flex items-center justify-between gap-3 flex-wrap"><div class="min-w-0 flex-1"><b>${s.bib} · ${s.name}</b><p class="text-xs text-slate-500">Rumah: ${s.house}</p></div><div class="flex gap-2"><div class="w-28"><label class="text-xs block mb-1">Kedudukan</label><input data-xc-student="${s.id}" type="number" min="1" class="field !p-2" placeholder="Cth: 1" value="${rRes?.rank || ''}"></div><div class="w-28"><label class="text-xs block mb-1">Masa</label><input data-xc-time="${s.id}" type="number" step=".01" class="field !p-2" placeholder="Masa" value="${timeVal}"></div></div></div>`;
     }).join('') || '<p class="text-slate-500">Tiada peserta berdaftar.</p>'}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Mata Merentas Desa</button></form>`);
     
     $('#judge-form').onsubmit = async ev => {
       ev.preventDefault();
       let entries = regs.map(s => {
         const rankInput = $(`[data-xc-student="${s.id}"]`);
+        const timeInput = $(`[data-xc-time="${s.id}"]`);
         const rank = rankInput ? parseInt(rankInput.value, 10) : 0;
-        return { s, rank };
+        const time = timeInput ? (+timeInput.value || 0) : 0;
+        return { s, rank, time };
       }).filter(x => x.rank > 0);
 
       entries.sort((a, b) => a.rank - b.rank);
@@ -1450,11 +1453,12 @@ function openJudge(eventId){
         const rank = x.rank;
         const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
         const points = crossPoints[rank - 1] || 0;
+        const value = x.time > 0 ? x.time : rank;
         state.results.push({
           id: uid('x'),
           eventId,
           studentId: x.s.id,
-          value: rank,
+          value,
           rank,
           status: 'SAH',
           medal,
@@ -1760,7 +1764,7 @@ function makePdf(kind){
   if (kind === 'pdf-students') rows = state.students.map(s => [s.bib,s.name,s.className,s.house,s.category,state.registrations.filter(r=>r.studentId===s.id).length+' Acara']);
   else if (kind === 'pdf-events') rows = state.events.map(e => [e.no,e.name,e.category,e.type,e.status]);
   else if (kind === 'pdf-standings' || kind === 'pdf-analysis') rows = calc().standing.map((r,i) => [i+1,r.house,r.gold,r.silver,r.bronze,r.points]);
-  else if (kind === 'pdf-results') rows = state.results.map(r => { const e=state.events.find(x=>x.id===r.eventId), s=state.students.find(x=>x.id===r.studentId); return [e?.no,r.rank,s?.bib,s?.name,s?.house,(r.value||'')+' '+(e?.unit||''),r.medal||'—']; });
+  else if (kind === 'pdf-results') rows = state.results.map(r => { const e=state.events.find(x=>x.id===r.eventId), s=state.students.find(x=>x.id===r.studentId); return [e?.no,r.rank,s?.bib,s?.name,s?.house,(r.value||'')+' '+(e?.unit||'s'),r.medal||'—']; });
   else if (kind === 'pdf-records') rows = [...state.results.filter(r=>r.status==='RB').map(r=>{const e=state.events.find(x=>x.id===r.eventId),s=state.students.find(x=>x.id===r.studentId);return [e?.no,e?.name,e?.category,s?.name,r.value+' '+(e?.unit||'s'),state.settings.activeYear]}),...(state.settings.historicalRecords||[]).map(r=>[r.no,r.name,r.category,r.holder,r.value,r.year])];
   else rows = state.events.flatMap(e => laneParticipants(e).slice(0, lanes).map((s,i)=>[e.no,e.name,i+1,s.bib,s.name,s.house,'__________________']));
   const headers = kind==='pdf-students'?['BIB','NAMA MURID','KELAS','RUMAH','KATEGORI','ACARA']:kind==='pdf-events'?['NO','NAMA ACARA','KATEGORI','JENIS ACARA','STATUS']:kind==='pdf-results'?['ACARA','KED','BIB','PEMENANG','RUMAH','PENCAPAIAN','PINGAT']:kind==='pdf-records'?['NO ACARA','NAMA ACARA','KATEGORI','PEMEGANG REKOD','CATATAN','TAHUN']:kind==='pdf-start'?['ACARA','NAMA ACARA','NO','BIB','ATLET','RUMAH','CATATAN']:['KED.','RUMAH SUKAN','EMAS','PERAK','GANGSA','JUMLAH MATA'];
