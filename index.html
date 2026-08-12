@@ -147,8 +147,8 @@ const defaultData={
    {id:'r3',studentId:'s4',eventId:'e4'}
   ],
   results:[
-   {id:'x1',eventId:'e4',studentId:'s1',value:14.22,rank:1,status:'SAH',medal:'Emas',points:10},
-   {id:'x2',eventId:'e4',studentId:'s2',value:15.05,rank:2,status:'SAH',medal:'Perak',points:9}
+   {id:'x1',eventId:'e4',studentId:'s1',value:1,rank:1,status:'SAH',medal:'Emas',points:10},
+   {id:'x2',eventId:'e4',studentId:'s2',value:2,rank:2,status:'SAH',medal:'Perak',points:9}
   ],
   activities:['Sistem dimulakan dengan data simulasi awal.'],
   recycleBin:[]
@@ -593,7 +593,15 @@ function judgePreview(e){
      return [i+1, s.bib, s.name, ...fmtAtt, r?.value || '—'];
    }), ['Giliran', 'Bib', 'Atlet', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'Terbaik']);
  }
- if(e.type==='Merentas Desa')return miniGrid(Array.from({length:10},(_,i)=>[i+1,rr.find(r=>r.rank===i+1)?.studentId?state.students.find(s=>s.id===rr.find(r=>r.rank===i+1).studentId)?.bib:'—',10-i]),['Kedudukan','Bib','Mata']);
+ if(e.type==='Merentas Desa'){
+   const crossPoints = state.settings.crossPoints || [10,9,8,7,6,5,4,3,2,1];
+   return miniGrid(Array.from({length:Math.min(10, regs.length)},(_,i)=>{
+     const rank = i + 1;
+     const rRes = rr.find(r=>r.rank === rank);
+     const student = rRes ? state.students.find(s=>s.id === rRes.studentId) : null;
+     return [rank, student ? student.bib : '—', student ? student.name : '—', crossPoints[i] || 0];
+   }),['Kedudukan (Rank)','Bib','Nama Peserta','Mata']);
+ }
  
  if(e.type==='Relay' || e.type==='Balapan'){
    const heats = getEventHeats(e);
@@ -1415,7 +1423,54 @@ function openJudge(eventId){
     return;
   }
 
-  // 3. BAHAGIAN PADANG & LAIN-LAIN
+  // 3. BAHAGIAN MERENTAS DESA
+  if(e.type === 'Merentas Desa'){
+    const regs = eventRegs(e);
+    const rr = state.results.filter(r => r.eventId === eventId);
+    
+    openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-3">${regs.map(s => {
+      const rRes = rr.find(x => x.studentId === s.id);
+      return `<div class="rounded-xl border p-3 flex items-center justify-between gap-3"><div class="min-w-0 flex-1"><b>${s.bib} · ${s.name}</b><p class="text-xs text-slate-500">Rumah: ${s.house}</p></div><div class="w-32"><label class="text-xs block mb-1">Kedudukan (Rank)</label><input data-xc-student="${s.id}" type="number" min="1" class="field !p-2" placeholder="Cth: 1" value="${rRes?.rank || ''}"></div></div>`;
+    }).join('') || '<p class="text-slate-500">Tiada peserta berdaftar.</p>'}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Mata Merentas Desa</button></form>`);
+    
+    $('#judge-form').onsubmit = async ev => {
+      ev.preventDefault();
+      let entries = regs.map(s => {
+        const rankInput = $(`[data-xc-student="${s.id}"]`);
+        const rank = rankInput ? parseInt(rankInput.value, 10) : 0;
+        return { s, rank };
+      }).filter(x => x.rank > 0);
+
+      entries.sort((a, b) => a.rank - b.rank);
+      state.results = state.results.filter(r => r.eventId !== eventId);
+
+      const crossPoints = state.settings.crossPoints || [10,9,8,7,6,5,4,3,2,1];
+
+      entries.forEach(x => {
+        const rank = x.rank;
+        const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
+        const points = crossPoints[rank - 1] || 0;
+        state.results.push({
+          id: uid('x'),
+          eventId,
+          studentId: x.s.id,
+          value: rank,
+          rank,
+          status: 'SAH',
+          medal,
+          points
+        });
+      });
+
+      e.status = 'Selesai';
+      await saveTypes(['results', 'events']);
+      closeModal();
+      render();
+    };
+    return;
+  }
+
+  // 4. BAHAGIAN PADANG & LAIN-LAIN
   const p = laneParticipants(e), rr = state.results.filter(r => r.eventId === eventId);
   openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-3">${p.map((s, i) => {
       const rRes = rr.find(x => x.studentId === s.id);
