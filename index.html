@@ -571,6 +571,7 @@ function renderJudges(){
  return `${pageHead('Borang Hakim','Masukkan masa, jarak, enam percubaan atau keputusan.',action('Cetak Keputusan','file-check','pdf-results','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>`<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type}</p></div><div class="flex flex-wrap gap-2"><button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button><button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`).join('')}</div>`;
 }
+
 function judgePreview(e){
  const rr=state.results.filter(r=>r.eventId===e.id);
  const lanes = getEventLanes(e);
@@ -586,21 +587,27 @@ function judgePreview(e){
 
  if(e.type==='Padang'){
    const p=laneParticipants(e);
-   return miniGrid(p.map((s,i)=>{
+   const sortedWithRank = [...p].map(s => {
      const r = rr.find(x=>x.studentId===s.id);
+     return { s, r, val: r?.value || 0 };
+   }).sort((a,b) => b.val - a.val);
+
+   return miniGrid(sortedWithRank.map((item,i)=>{
+     const {s, r} = item;
      const att = r?.attempts || [0,0,0,0,0,0];
      const fmtAtt = att.map(v => (!v || v === 0 ? 'X' : v));
-     return [i+1, s.bib, s.name, ...fmtAtt, r?.value || '—'];
-   }), ['Giliran', 'Bib', 'Atlet', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'Terbaik']);
+     const rankDisplay = r?.rank ? `#${r.rank}` : (item.val > 0 ? `#${i+1}` : '—');
+     return [rankDisplay, i+1, s.bib, s.name, ...fmtAtt, r?.value || '—'];
+   }), ['Kedudukan', 'Giliran', 'Bib', 'Atlet', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'Terbaik']);
  }
  if(e.type==='Merentas Desa'){
-   const crossPoints = state.settings.crossPoints || [10,9,8,7,6,5,4,3,2,1];
-   return miniGrid(Array.from({length:Math.min(10, regs.length)},(_,i)=>{
-     const rank = i + 1;
-     const rRes = rr.find(r=>r.rank === rank);
-     const student = rRes ? state.students.find(s=>s.id === rRes.studentId) : null;
-     return [rank, student ? student.bib : '—', student ? student.name : '—', rRes?.value || '—', crossPoints[i] || 0];
-   }),['Kedudukan','Bib','Nama Peserta','Masa','Mata']);
+  const crossPoints = state.settings.crossPoints || [10,9,8,7,6,5,4,3,2,1];
+  return miniGrid(Array.from({length:Math.min(10, regs.length)},(_,i)=>{
+    const rank = i + 1;
+    const rRes = rr.find(r=>r.rank === rank);
+    const student = rRes ? state.students.find(s=>s.id === rRes.studentId) : null;
+    return [rank, student ? student.bib : '—', student ? student.name : '—', rRes?.value || '—', crossPoints[i] || 0];
+  }),['Kedudukan','Bib','Nama Peserta','Masa','Mata']);
  }
  
  if(e.type==='Relay' || e.type==='Balapan'){
@@ -613,12 +620,14 @@ function judgePreview(e){
          if(e.type==='Relay'){
            const repStudent=r.athletes?.[0];
            const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
-           return [r.lane, r.house, r.athletes?.map(a=>a.name).join(', ')||'Kosong', res?.value||'—', res?.status||'—'];
+           const rankDisplay = res?.rank ? `#${res.rank}` : '—';
+           return [rankDisplay, r.lane, r.house, r.athletes?.map(a=>a.name).join(', ')||'Kosong', res?.value||'—', res?.status||'—'];
          } else {
            const res=r.studentId?rr.find(x=>x.studentId===r.studentId):null;
-           return [r.lane, r.bib, r.name, res?.value||'—', res?.status||'—'];
+           const rankDisplay = res?.rank ? `#${res.rank}` : '—';
+           return [rankDisplay, r.lane, r.bib, r.name, res?.value||'—', res?.status||'—'];
          }
-       }), e.type==='Relay'?['Lorong','Rumah Sukan','Atlet','Masa','Status']:['Lorong','Bib','Atlet','Masa','Status'])}
+       }), e.type==='Relay'?['Kedudukan','Lorong','Rumah Sukan','Atlet','Masa','Status']:['Kedudukan','Lorong','Bib','Atlet','Masa','Status'])}
      </div>
    `).join('');
 
@@ -635,6 +644,7 @@ function judgePreview(e){
  }
  return '';
 }
+
 function renderWinners(){
  const rows=[...state.results].sort((a,b)=>(state.events.find(e=>e.id===a.eventId)?.no||'').localeCompare(state.events.find(e=>e.id===b.eventId)?.no||'')||a.rank-b.rank);
  return `${pageHead('Senarai Pemenang','Semakan pingat dan persediaan sijil.',action('Jana PDF Rasmi','printer','pdf-results','btn-primary'))}<section class="panel">${miniGrid(rows.map(r=>{const e=state.events.find(x=>x.id===r.eventId),s=state.students.find(x=>x.id===r.studentId);return[e?.no,e?.name,r.rank,s?.bib,s?.name,r.medal,r.status]}),['No.','Acara','Tempat','Bib','Pemenang','Pingat','Status'])}</section>`;
@@ -1318,7 +1328,6 @@ function openJudge(eventId){
   }
   const isDirectFinal = participantCount <= lanes;
   
-  // 1. BAHAGIAN RELAY
   if(e.type === 'Relay'){
     const heats = getEventHeats(e);
     const rr = state.results.filter(r => r.eventId === eventId);
@@ -1365,7 +1374,6 @@ function openJudge(eventId){
     return;
   }
 
-  // 2. BAHAGIAN BALAPAN
   if(e.type === 'Balapan'){
     const heats = getEventHeats(e);
     const rr = state.results.filter(r => r.eventId === eventId);
@@ -1423,7 +1431,6 @@ function openJudge(eventId){
     return;
   }
 
-  // 3. BAHAGIAN MERENTAS DESA
   if(e.type === 'Merentas Desa'){
     const regs = eventRegs(e);
     const rr = state.results.filter(r => r.eventId === eventId);
@@ -1474,7 +1481,6 @@ function openJudge(eventId){
     return;
   }
 
-  // 4. BAHAGIAN PADANG & LAIN-LAIN
   const p = laneParticipants(e), rr = state.results.filter(r => r.eventId === eventId);
   openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-3">${p.map((s, i) => {
       const rRes = rr.find(x => x.studentId === s.id);
