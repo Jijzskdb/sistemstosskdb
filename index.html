@@ -739,23 +739,38 @@ function judgePreview(e){
  if(e.type==='Relay' || e.type==='Balapan'){
    const heats = getEventHeats(e);
    if(!heats) return '<p class="text-sm text-slate-400">Sila jana undian terlebih dahulu.</p>';
-   let html = heats.map(heat=>`
-     <div class="mb-3">
-       <h5 class="text-xs font-bold uppercase tracking-wider text-[#146b8c] mb-1.5">${heat.heatName}</h5>
-       ${miniGrid(heat.rows.map(r=>{
-         if(e.type==='Relay'){
-           const repStudent=r.athletes?.[0];
-           const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
-           const rankDisplay = res?.rank ? `#${res.rank}` : '—';
-           return [rankDisplay, r.lane, r.house, r.athletes?.map(a=>a.name).join(', ')||'Kosong', res?.value||'—', res?.status||'—'];
-         } else {
-           const res=r.studentId?rr.find(x=>x.studentId===r.studentId):null;
-           const rankDisplay = res?.rank ? `#${res.rank}` : '—';
-           return [rankDisplay, r.lane, r.bib, r.name, res?.value||'—', res?.status||'—'];
-         }
-       }), e.type==='Relay'?['Kedudukan','Lorong','Rumah Sukan','Atlet','Masa','Status']:['Kedudukan','Lorong','Bib','Atlet','Masa','Status'])}
-     </div>
-   `).join('');
+   let html = heats.map(heat=>{
+     let sortedRows = [...heat.rows].sort((a, b) => {
+       const resA = e.type === 'Relay' 
+         ? (a.athletes?.[0] ? rr.find(x => x.studentId === a.athletes[0].id) : null)
+         : (a.studentId ? rr.find(x => x.studentId === a.studentId) : null);
+       const resB = e.type === 'Relay' 
+         ? (b.athletes?.[0] ? rr.find(x => x.studentId === b.athletes[0].id) : null)
+         : (b.studentId ? rr.find(x => x.studentId === b.studentId) : null);
+       
+       const valA = (resA && resA.value > 0 && resA.status !== 'DNS' && resA.status !== 'DQ') ? resA.value : 999999;
+       const valB = (resB && resB.value > 0 && resB.status !== 'DNS' && resB.status !== 'DQ') ? resB.value : 999999;
+       return valA - valB;
+     });
+
+     return `
+       <div class="mb-3">
+         <h5 class="text-xs font-bold uppercase tracking-wider text-[#146b8c] mb-1.5">${heat.heatName}</h5>
+         ${miniGrid(sortedRows.map(r=>{
+           if(e.type==='Relay'){
+             const repStudent=r.athletes?.[0];
+             const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
+             const rankDisplay = res?.rank ? `#${res.rank}` : '—';
+             return [rankDisplay, r.lane, r.house, r.athletes?.map(a=>a.name).join(', ')||'Kosong', res?.value||'—', res?.status||'—'];
+           } else {
+             const res=r.studentId?rr.find(x=>x.studentId===r.studentId):null;
+             const rankDisplay = res?.rank ? `#${res.rank}` : '—';
+             return [rankDisplay, r.lane, r.bib, r.name, res?.value||'—', res?.status||'—'];
+           }
+         }), e.type==='Relay'?['Kedudukan','Lorong','Rumah Sukan','Atlet','Masa','Status']:['Kedudukan','Lorong','Bib','Atlet','Masa','Status'])}
+       </div>
+     `;
+   }).join('');
 
    if (!isDirectFinal) {
      const blankFinalRows = Array.from({length: lanes}, (_, i) => [i + 1, '—', 'Menunggu Keputusan Separuh Akhir', '—', '—']);
@@ -1915,7 +1930,7 @@ function makePdf(kind){
       <p>${escPrint(state.settings.tournament)} · Tahun ${escPrint(state.settings.activeYear)}</p>
     </div>
   </div>
-  <h2>Ringkasan Laporan</h2><p>Tarikh Laporan: ${escPrint(new Date().toLocaleDateString('ms-MY'))}</p><table><thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
+  <h2>Ringkasan Laporan</h2><p>Tarikh Laporan: ${escPrint(new Date().toLocaleDateString('ms-MY'))}</p><table><thead><tr>${headers.map(h=>`<th>${escPrint(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escPrint(cell)}</td>`).join('')}</tr>`).join('')}</body></html>`;
   popup.document.write(reportHTML);
   popup.document.close();
   setTimeout(() => { popup.focus(); popup.print(); }, 400);
