@@ -492,7 +492,6 @@ function renderDraw(){
 function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${(typeof c==='string'&&c.includes('<')&&c.includes('>'))?c:esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
 
 function renderSchedule(){
-  // Gather all scheduled entries from events (SSOT)
   let entries = state.events.map(e => {
     const regs = eventRegs(e);
     let bilPeserta = regs.length;
@@ -517,10 +516,8 @@ function renderSchedule(){
     };
   });
 
-  // Sort by Date then Start Time
   entries.sort((a,b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
 
-  // Group by Date
   const grouped = {};
   entries.forEach(item => {
     (grouped[item.date] ||= []).push(item);
@@ -715,19 +712,20 @@ function judgePreview(e){
 
  if(e.type==='Padang'){
    const p=laneParticipants(e);
-   const sortedWithRank = [...p].map(s => {
+   const sortedWithRank = [...p].map((s, originalIdx) => {
      const r = rr.find(x=>x.studentId===s.id);
-     return { s, r, val: r?.value || 0 };
+     return { s, r, val: r?.value || 0, originalGiliran: originalIdx + 1 };
    }).sort((a,b) => b.val - a.val);
 
    return miniGrid(sortedWithRank.map((item,i)=>{
-     const {s, r} = item;
+     const {s, r, originalGiliran} = item;
      const att = r?.attempts || [0,0,0,0,0,0];
      const fmtAtt = att.map(v => (!v || v === 0 ? 'X' : v));
      const rankDisplay = r?.rank ? `#${r.rank}` : (item.val > 0 ? `#${i+1}` : '—');
-     return [rankDisplay, i+1, s.bib, s.name, ...fmtAtt, r?.value || '—'];
+     return [rankDisplay, originalGiliran, s.bib, s.name, ...fmtAtt, r?.value || '—'];
    }), ['Kedudukan', 'Giliran', 'Bib', 'Atlet', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'Terbaik']);
  }
+ 
  if(e.type==='Merentas Desa'){
   const crossPoints = state.settings.crossPoints || [10,9,8,7,6,5,4,3,2,1];
   return miniGrid(Array.from({length:Math.min(10, regs.length)},(_,i)=>{
