@@ -157,7 +157,7 @@ let state=structuredClone(defaultData), records=[], currentView='dashboard', bus
 state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:new Date().toISOString()}];
 
 const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;ummer'[m]||m}));
 const uid=p=>p+Math.random().toString(36).slice(2,9);
 const now=()=>new Date().toISOString();
 function iconRefresh(){if(window.lucide) lucide.createIcons()}
@@ -489,7 +489,7 @@ function renderDraw(){
     return '';
  }).join('')}</div>`;
 }
-function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${(typeof c==='string'&&c.includes('<')&&c.includes('>'))?c:esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
 
 function renderRegistration(){
   const active=new Set(state.registrations.map(r=>r.studentId));
