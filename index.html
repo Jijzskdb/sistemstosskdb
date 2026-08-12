@@ -591,8 +591,14 @@ function judgePreview(e){
  const isDirectFinal = participantCount <= lanes;
 
  if(e.type==='Padang'){
-   const p=laneParticipants(e);
-   return miniGrid(p.map((s,i)=>[i+1,s.bib,s.name,rr.find(r=>r.studentId===s.id)?.value||'—','6 percubaan']),['Giliran','Bib','Atlet','Terbaik','Struktur']);
+     const p=laneParticipants(e);
+     return miniGrid(p.map((s,i)=>{
+       const r = rr.find(x=>x.studentId===s.id);
+       const att = r?.attempts || [0,0,0,0,0,0];
+       const fmtAtt = att.map(v => (!v || v === 0 ? 'X' : v));
+       return [i+1, s.bib, s.name, ...fmtAtt, r?.value || '—'];
+     }), ['Giliran', 'Bib', 'Atlet', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'Terbaik']);
+  }
  }
  if(e.type==='Merentas Desa')return miniGrid(Array.from({length:10},(_,i)=>[i+1,rr.find(r=>r.rank===i+1)?.studentId?state.students.find(s=>s.id===rr.find(r=>r.rank===i+1).studentId)?.bib:'—',10-i]),['Kedudukan','Bib','Mata']);
  
