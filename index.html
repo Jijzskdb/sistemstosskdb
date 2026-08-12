@@ -367,25 +367,31 @@ function getEventHeats(e) {
       ? currentDraw 
       : regs.map(s => s.id);
 
-    if (participantIds.length <= lanes) {
-      const heatParticipants = participantIds.map(id => state.students.find(s => s.id === id)).filter(Boolean);
-      return [{
-        heatName: 'Peringkat Akhir (Terus)',
-        rows: Array.from({length: lanes}, (_, i) => {
-          const s = heatParticipants[i];
-          return {
-            lane: i + 1,
-            bib: s?.bib || '—',
-            name: s?.name || 'Kosong',
-            house: s?.house || '—',
-            studentId: s?.id
-          };
-        })
-      }];
+    if (participantIds.length === 0) return [];
+
+    let heats = [];
+    for (let i = 0; i < participantIds.length; i += lanes) {
+      let heatPartIds = participantIds.slice(i, i + lanes);
+      let heatNum = Math.floor(i / lanes) + 1;
+      let heatName = participantIds.length <= lanes ? 'Peringkat Akhir (Terus)' : `Siri Separuh Akhir ${heatNum}`;
+      
+      let rows = Array.from({length: lanes}, (_, laneIdx) => {
+        const id = heatPartIds[laneIdx];
+        const s = id ? state.students.find(x => x.id === id) : null;
+        return {
+          lane: laneIdx + 1,
+          bib: s?.bib || '—',
+          name: s?.name || (id ? 'Peserta' : 'Kosong'),
+          house: s?.house || '—',
+          studentId: s?.id
+        };
+      });
+      heats.push({ heatName, rows });
     }
+    return heats;
   }
 
-  return null;
+  return [];
 }
 
 function createLaneDraw(e){
