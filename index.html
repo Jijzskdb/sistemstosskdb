@@ -400,10 +400,8 @@ function createLaneDraw(e){
   
   if (regs.length === 0) return [];
 
-  // Salin senarai rumah asal
   let activeHouses = [...(state.settings.houses || houses)];
 
-  // 1. Cipta "seed" unik berdasarkan ID/No Acara supaya setiap acara ada susunan rumah yang BERBEZA
   let seed = 0;
   const eventIdStr = String(e.id || e.no || 'event');
   for (let i = 0; i < eventIdStr.length; i++) {
@@ -412,14 +410,12 @@ function createLaneDraw(e){
   }
   seed = Math.abs(seed);
 
-  // 2. Algoritma shuffle unik untuk acara ini sahaja (Fisher-Yates berpandukan seed acara)
   for (let i = activeHouses.length - 1; i > 0; i--) {
     const j = seed % (i + 1);
     [activeHouses[i], activeHouses[j]] = [activeHouses[j], activeHouses[i]];
     seed = Math.floor(seed / 7) + i * 3; 
   }
 
-  // Kumpul peserta mengikut rumah
   const byHouse = {};
   activeHouses.forEach(h => { byHouse[h] = []; });
   regs.forEach(s => {
@@ -427,7 +423,6 @@ function createLaneDraw(e){
     byHouse[s.house].push(s);
   });
 
-  // Cari bilangan maksimum atlet dalam satu-satu rumah
   let maxAthletes = 0;
   activeHouses.forEach(h => {
     if ((byHouse[h] || []).length > maxAthletes) {
@@ -435,7 +430,6 @@ function createLaneDraw(e){
     }
   });
 
-  // 3. Susunan Selang-Seli (Interleaved) mengikut urutan unik rumah untuk acara tersebut
   let assignedList = [];
   for (let slot = 0; slot < maxAthletes; slot++) {
     for (let i = 0; i < activeHouses.length; i++) {
@@ -591,14 +585,13 @@ function judgePreview(e){
  const isDirectFinal = participantCount <= lanes;
 
  if(e.type==='Padang'){
-     const p=laneParticipants(e);
-     return miniGrid(p.map((s,i)=>{
-       const r = rr.find(x=>x.studentId===s.id);
-       const att = r?.attempts || [0,0,0,0,0,0];
-       const fmtAtt = att.map(v => (!v || v === 0 ? 'X' : v));
-       return [i+1, s.bib, s.name, ...fmtAtt, r?.value || '—'];
-     }), ['Giliran', 'Bib', 'Atlet', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'Terbaik']);
-  }
+   const p=laneParticipants(e);
+   return miniGrid(p.map((s,i)=>{
+     const r = rr.find(x=>x.studentId===s.id);
+     const att = r?.attempts || [0,0,0,0,0,0];
+     const fmtAtt = att.map(v => (!v || v === 0 ? 'X' : v));
+     return [i+1, s.bib, s.name, ...fmtAtt, r?.value || '—'];
+   }), ['Giliran', 'Bib', 'Atlet', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'Terbaik']);
  }
  if(e.type==='Merentas Desa')return miniGrid(Array.from({length:10},(_,i)=>[i+1,rr.find(r=>r.rank===i+1)?.studentId?state.students.find(s=>s.id===rr.find(r=>r.rank===i+1).studentId)?.bib:'—',10-i]),['Kedudukan','Bib','Mata']);
  
@@ -1098,7 +1091,7 @@ async function handleAction(a,b){
    return;
  }
  if(a==='import-events'){$('#event-file-import').click();$('#event-file-import').onchange=importEvents;return}
-  if(a==='register-athlete'){openRegistration('', registrationHouseFilter);return}
+ if(a==='register-athlete'){openRegistration('', registrationHouseFilter);return}
  if(a==='quick-register'){
    const eventId = b.dataset.eventId;
    const house = b.dataset.house;
@@ -1304,165 +1297,170 @@ function openRegistration(preEventId = '', preHouse = ''){
 }
 
 function openJudge(eventId){
- const e=state.events.find(x=>x.id===eventId);
- const lanes = getEventLanes(e);
- const regs = eventRegs(e);
- 
- let participantCount = regs.length;
- if(e.type==='Relay'){
-   const byHouse={};
-   regs.forEach(s=>{ (byHouse[s.house]||=[]).push(s); });
-   participantCount = Object.keys(byHouse).filter(h=>byHouse[h].length>0).length;
- }
- const isDirectFinal = participantCount <= lanes;
- 
- if(e.type==='Relay'){
-   const heats = getEventHeats(e);
-   const rr=state.results.filter(r=>r.eventId===eventId);
-   openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-5">${heats.map(heat=>`
-     <div class="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
-       <h4 class="font-extrabold text-[#146b8c] text-sm mb-3 uppercase tracking-wider">${heat.heatName}</h4>
-       <div class="space-y-3">
-         ${heat.rows.map(r=>{
-           const repStudent=r.athletes?.[0];
-           const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
-           return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>Lorong ${r.lane} · Rumah ${r.house}</b><span class="text-xs text-slate-400">${r.athletes?.length||0} atlet</span></div><p class="text-xs text-slate-500 mb-2">Pelari: ${r.athletes?.map(a=>a.name).join(', ')||'Tiada atlet'}</p><div class="grid grid-cols-2 gap-2"><input data-relay-house="${r.house}" type="number" step=".01" class="field" placeholder="Masa" value="${res?.value||''}"><select data-relay-status="${r.house}" class="field"><option ${res?.status==='SAH'?'selected':''}>SAH</option><option ${res?.status==='DNS'?'selected':''}>DNS</option><option ${res?.status==='DQ'?'selected':''}>DQ</option><option ${res?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
-         }).join('')}
-       </div>
-     </div>
-   `).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Selesaikan Keputusan</button></form>`);
-   
-   $('#judge-form').onsubmit=async ev=>{
-     ev.preventDefault();
-     let entries=[];
-     heats.forEach(heat=>{
-       heat.rows.forEach(r=>{
-         if(!r.athletes?.length)return;
-         const valInput=$(`[data-relay-house="${r.house}"]`), statusInput=$(`[data-relay-status="${r.house}"]`);
-         const value=valInput?(+valInput.value||0):0;
-         const status=statusInput?statusInput.value:'SAH';
-         if(value>0&&status!=='DNS'&&status!=='DQ'){
-           entries.push({house:r.house,repStudent:r.athletes[0],value,status});
-         }
-       });
-     });
-     entries.sort((a,b)=>a.value-b.value);
-     state.results=state.results.filter(r=>r.eventId!==eventId);
-     entries.forEach((x,i)=>{
-       const rank=i+1, medal=rank===1?'Emas':rank===2?'Perak':rank===3?'Gangsa':'', points=rank===1?5:rank===2?3:rank===3?1:0;
-       let status=x.status;
-       if(e.record&&x.value<e.record)status='RB';
-       state.results.push({id:uid('x'),eventId,studentId:x.repStudent.id,value:x.value,rank,status,medal,points});
-     });
-     e.status='Selesai';
-     await saveTypes(['results','events']);
-     closeModal();
-     render();
-   };
-   return;
- }
-
- if(e.type==='Balapan'){
-   const heats = getEventHeats(e);
-   const rr=state.results.filter(r=>r.eventId===eventId);
-   
-   openModal(`Keputusan · ${e.no} ${e.name}`,`<form id="judge-form"><div class="space-y-5">${heats.map(heat=>`
-     <div class="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
-       <h4 class="font-extrabold text-[#146b8c] text-sm mb-3 uppercase tracking-wider">${heat.heatName}</h4>
-       <div class="space-y-3">
-         ${heat.rows.map(r=>{
-           if(!r.studentId) return '';
-           const s=state.students.find(x=>x.id===r.studentId);
-           const rRes=s?rr.find(x=>x.studentId===s.id):null;
-           return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${r.lane}</span></div><div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="number" step=".01" class="field" placeholder="Masa" value="${rRes?.value||''}"><select data-status="${s.id}" class="field"><option ${rRes?.status==='SAH'?'selected':''}>SAH</option><option ${rRes?.status==='DNS'?'selected':''}>DNS</option><option ${rRes?.status==='DQ'?'selected':''}>DQ</option><option ${rRes?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
-         }).join('')}
-       </div>
-     </div>
-   `).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Selesaikan Keputusan</button></form>`);
-   
-   $('#judge-form').onsubmit=async ev=>{
-     ev.preventDefault();
-     let participants = eventRegs(e);
-     let entries = participants.map(s=>{
-       const valInput = $(`[data-value="${s.id}"]`);
-       const statusInput = $(`[data-status="${s.id}"]`);
-       const value = valInput ? (+valInput.value || 0) : 0;
-       const status = statusInput ? statusInput.value : 'SAH';
-       return {s, value, status};
-     }).filter(x=>x.value>0 && x.status!=='DNS' && x.status!=='DQ' && x.status!=='Batal');
-     
-     entries.sort((a,b)=>a.value-b.value);
-     state.results=state.results.filter(r=>r.eventId!==eventId);
-     
-     if (!isDirectFinal && heats.length > 1 && !heats[0].heatName.includes('Akhir')) {
-       const topQualified = entries.slice(0, lanes).map(x => x.s.id);
-       if(!state.settings.laneDraws) state.settings.laneDraws = {};
-       state.settings.laneDraws[e.id] = topQualified;
-       toast(`Separuh akhir selesai! ${topQualified.length} peserta terpantas layak ke Peringkat Akhir secara automatik.`);
-     } else {
-       entries.forEach((x,i)=>{
-         const rank=i+1;
-         const medal=rank===1?'Emas':rank===2?'Perak':rank===3?'Gangsa':'';
-         const points=rank===1?5:rank===2?3:rank===3?1:0;
-         let status=x.status;
-         if(e.record && x.value<e.record) status='RB';
-         state.results.push({id:uid('x'),eventId,studentId:x.s.id,value:x.value,rank,status,medal,points});
-       });
-       e.status='Selesai';
-       toast('Keputusan Peringkat Akhir berjaya disimpan!');
-     }
-
-     await saveTypes(['results','events','settings']);
-     closeModal();
-     render();
-   };
-   return;
- }
-
- const p = laneParticipants(e), rr = state.results.filter(r => r.eventId === eventId);
-openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-3">${p.map((s, i) => {
-    const rRes = rr.find(x => x.studentId === s.id);
-    const att = rRes?.attempts || [0, 0, 0, 0, 0, 0];
-    return `<div class="rounded-xl border p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Giliran ${i + 1}</span></div><div class="grid grid-cols-3 gap-2 md:grid-cols-6">${Array.from({ length: 6 }, (_, j) => `<label><span class="text-xs">P${j + 1}</span><input data-attempt="${s.id}" type="number" step=".01" class="field !p-2" value="${att[j] || ''}"></label>`).join('')}</div><label class="mt-2 block"><span class="text-xs">Status</span><select data-status="${s.id}" class="field"><option ${rRes?.status === 'SAH' ? 'selected' : ''}>SAH</option><option ${rRes?.status === 'DNS' ? 'selected' : ''}>DNS</option><option ${rRes?.status === 'DQ' ? 'selected' : ''}>DQ</option><option ${rRes?.status === 'Batal' ? 'selected' : ''}>Batal</option></select></label></div>`;
-}).join('') || '<p class="text-slate-500">Tiada peserta berdaftar.</p>'}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Kedudukan</button></form>`);
-
-$('#judge-form').onsubmit = async ev => {
-    ev.preventDefault();
-    let entries = p.map(s => {
-        let attemptInputs = [...document.querySelectorAll(`[data-attempt="${s.id}"]`)];
-        let attempts = attemptInputs.map(x => +x.value || 0);
-        let value = Math.max(0, ...attempts);
-        let status = $(`[data-status="${s.id}"]`).value;
-        return { s, attempts, value, status };
-    }).filter(x => x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
-
-    entries.sort((a, b) => b.value - a.value);
-    state.results = state.results.filter(r => r.eventId !== eventId);
-
-    entries.forEach((x, i) => {
-        const rank = i + 1, medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
-        const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
-        let status = x.status;
-        if (e.record && x.value > e.record) status = 'RB';
-        state.results.push({
-            id: uid('x'),
-            eventId,
-            studentId: x.s.id,
-            attempts: x.attempts,
-            value: x.value,
-            rank,
-            status,
-            medal,
-            points
+  const e = state.events.find(x => x.id === eventId);
+  if (!e) return;
+  const lanes = getEventLanes(e);
+  const regs = eventRegs(e);
+  
+  let participantCount = regs.length;
+  if(e.type === 'Relay'){
+    const byHouse = {};
+    regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
+    participantCount = Object.keys(byHouse).filter(h => byHouse[h].length > 0).length;
+  }
+  const isDirectFinal = participantCount <= lanes;
+  
+  // 1. BAHAGIAN RELAY
+  if(e.type === 'Relay'){
+    const heats = getEventHeats(e);
+    const rr = state.results.filter(r => r.eventId === eventId);
+    openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-5">${heats.map(heat => `
+      <div class="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+        <h4 class="font-extrabold text-[#146b8c] text-sm mb-3 uppercase tracking-wider">${heat.heatName}</h4>
+        <div class="space-y-3">
+          ${heat.rows.map(r => {
+            const repStudent = r.athletes?.[0];
+            const res = repStudent ? rr.find(x => x.studentId === repStudent.id) : null;
+            return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>Lorong ${r.lane} · Rumah ${r.house}</b><span class="text-xs text-slate-400">${r.athletes?.length||0} atlet</span></div><p class="text-xs text-slate-500 mb-2">Pelari: ${r.athletes?.map(a => a.name).join(', ') || 'Tiada atlet'}</p><div class="grid grid-cols-2 gap-2"><input data-relay-house="${r.house}" type="number" step=".01" class="field" placeholder="Masa" value="${res?.value||''}"><select data-relay-status="${r.house}" class="field"><option ${res?.status==='SAH'?'selected':''}>SAH</option><option ${res?.status==='DNS'?'selected':''}>DNS</option><option ${res?.status==='DQ'?'selected':''}>DQ</option><option ${res?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
+          }).join('')}
+        </div>
+      </div>
+    `).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Selesaikan Keputusan</button></form>`);
+    
+    $('#judge-form').onsubmit = async ev => {
+      ev.preventDefault();
+      let entries = [];
+      heats.forEach(heat => {
+        heat.rows.forEach(r => {
+          if(!r.athletes?.length) return;
+          const valInput = $(`[data-relay-house="${r.house}"]`), statusInput = $(`[data-relay-status="${r.house}"]`);
+          const value = valInput ? (+valInput.value || 0) : 0;
+          const status = statusInput ? statusInput.value : 'SAH';
+          if(value > 0 && status !== 'DNS' && status !== 'DQ'){
+            entries.push({house: r.house, repStudent: r.athletes[0], value, status});
+          }
         });
-    });
+      });
+      entries.sort((a, b) => a.value - b.value);
+      state.results = state.results.filter(r => r.eventId !== eventId);
+      entries.forEach((x, i) => {
+        const rank = i + 1, medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '', points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
+        let status = x.status;
+        if(e.record && x.value < e.record) status = 'RB';
+        state.results.push({id: uid('x'), eventId, studentId: x.repStudent.id, value: x.value, rank, status, medal, points});
+      });
+      e.status = 'Selesai';
+      await saveTypes(['results', 'events']);
+      closeModal();
+      render();
+    };
+    return;
+  }
 
-    e.status = 'Selesai';
-    await saveTypes(['results', 'events']);
-    closeModal();
-    render();
-};
+  // 2. BAHAGIAN BALAPAN
+  if(e.type === 'Balapan'){
+    const heats = getEventHeats(e);
+    const rr = state.results.filter(r => r.eventId === eventId);
+    
+    openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-5">${heats.map(heat => `
+      <div class="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+        <h4 class="font-extrabold text-[#146b8c] text-sm mb-3 uppercase tracking-wider">${heat.heatName}</h4>
+        <div class="space-y-3">
+          ${heat.rows.map(r => {
+            if(!r.studentId) return '';
+            const s = state.students.find(x => x.id === r.studentId);
+            const rRes = s ? rr.find(x => x.studentId === s.id) : null;
+            return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${r.lane}</span></div><div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="number" step=".01" class="field" placeholder="Masa" value="${rRes?.value||''}"><select data-status="${s.id}" class="field"><option ${rRes?.status==='SAH'?'selected':''}>SAH</option><option ${rRes?.status==='DNS'?'selected':''}>DNS</option><option ${rRes?.status==='DQ'?'selected':''}>DQ</option><option ${rRes?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
+          }).join('')}
+        </div>
+      </div>
+    `).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Selesaikan Keputusan</button></form>`);
+    
+    $('#judge-form').onsubmit = async ev => {
+      ev.preventDefault();
+      let participants = eventRegs(e);
+      let entries = participants.map(s => {
+        const valInput = $(`[data-value="${s.id}"]`);
+        const statusInput = $(`[data-status="${s.id}"]`);
+        const value = valInput ? (+valInput.value || 0) : 0;
+        const status = statusInput ? statusInput.value : 'SAH';
+        return {s, value, status};
+      }).filter(x => x.value > 0 && x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
+      
+      entries.sort((a, b) => a.value - b.value);
+      state.results = state.results.filter(r => r.eventId !== eventId);
+      
+      if (!isDirectFinal && heats.length > 1 && !heats[0].heatName.includes('Akhir')) {
+        const topQualified = entries.slice(0, lanes).map(x => x.s.id);
+        if(!state.settings.laneDraws) state.settings.laneDraws = {};
+        state.settings.laneDraws[e.id] = topQualified;
+        toast(`Separuh akhir selesai! ${topQualified.length} peserta terpantas layak ke Peringkat Akhir secara automatik.`);
+      } else {
+        entries.forEach((x, i) => {
+          const rank = i + 1;
+          const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
+          const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
+          let status = x.status;
+          if(e.record && x.value < e.record) status = 'RB';
+          state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status, medal, points});
+        });
+        e.status = 'Selesai';
+        toast('Keputusan Peringkat Akhir berjaya disimpan!');
+      }
+
+      await saveTypes(['results', 'events', 'settings']);
+      closeModal();
+      render();
+    };
+    return;
+  }
+
+  // 3. BAHAGIAN PADANG & LAIN-LAIN
+  const p = laneParticipants(e), rr = state.results.filter(r => r.eventId === eventId);
+  openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-3">${p.map((s, i) => {
+      const rRes = rr.find(x => x.studentId === s.id);
+      const att = rRes?.attempts || [0, 0, 0, 0, 0, 0];
+      return `<div class="rounded-xl border p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Giliran ${i + 1}</span></div><div class="grid grid-cols-3 gap-2 md:grid-cols-6">${Array.from({ length: 6 }, (_, j) => `<label><span class="text-xs">P${j + 1}</span><input data-attempt="${s.id}" type="number" step=".01" class="field !p-2" value="${att[j] || ''}"></label>`).join('')}</div><label class="mt-2 block"><span class="text-xs">Status</span><select data-status="${s.id}" class="field"><option ${rRes?.status === 'SAH' ? 'selected' : ''}>SAH</option><option ${rRes?.status === 'DNS' ? 'selected' : ''}>DNS</option><option ${rRes?.status === 'DQ' ? 'selected' : ''}>DQ</option><option ${rRes?.status === 'Batal' ? 'selected' : ''}>Batal</option></select></label></div>`;
+  }).join('') || '<p class="text-slate-500">Tiada peserta berdaftar.</p>'}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Kedudukan</button></form>`);
+
+  $('#judge-form').onsubmit = async ev => {
+      ev.preventDefault();
+      let entries = p.map(s => {
+          let attemptInputs = [...document.querySelectorAll(`[data-attempt="${s.id}"]`)];
+          let attempts = attemptInputs.map(x => +x.value || 0);
+          let value = Math.max(0, ...attempts);
+          let status = $(`[data-status="${s.id}"]`).value;
+          return { s, attempts, value, status };
+      }).filter(x => x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
+
+      entries.sort((a, b) => b.value - a.value);
+      state.results = state.results.filter(r => r.eventId !== eventId);
+
+      entries.forEach((x, i) => {
+          const rank = i + 1, medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
+          const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
+          let status = x.status;
+          if (e.record && x.value > e.record) status = 'RB';
+          state.results.push({
+              id: uid('x'),
+              eventId,
+              studentId: x.s.id,
+              attempts: x.attempts,
+              value: x.value,
+              rank,
+              status,
+              medal,
+              points
+          });
+      });
+
+      e.status = 'Selesai';
+      await saveTypes(['results', 'events']);
+      closeModal();
+      render();
+  };
 }
+
 async function handleLogoUpload(ev){
  const file=ev.target.files[0];if(!file)return;
  if(file.size>1024*1024*2){toast('Saiz logo melebihi had 2MB. Sila guna fail lebih kecil.','error');ev.target.value='';return}
