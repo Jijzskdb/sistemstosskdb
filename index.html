@@ -348,7 +348,7 @@ function getEventHeats(e) {
 
     if (assignedHouses.length <= lanes) {
       return [{
-        heatName: 'Peringkat Akhir (Terus)',
+        heatName: 'Akhir',
         rows: Array.from({length: lanes}, (_, i) => {
           const h = assignedHouses[i];
           return {
@@ -373,7 +373,7 @@ function getEventHeats(e) {
     for (let i = 0; i < participantIds.length; i += lanes) {
       let heatPartIds = participantIds.slice(i, i + lanes);
       let heatNum = Math.floor(i / lanes) + 1;
-      let heatName = participantIds.length <= lanes ? 'Peringkat Akhir (Terus)' : `Siri Separuh Akhir ${heatNum}`;
+      let heatName = participantIds.length <= lanes ? 'Akhir' : `Separuh Akhir ${heatNum}`;
       
       let rows = Array.from({length: lanes}, (_, laneIdx) => {
         const id = heatPartIds[laneIdx];
