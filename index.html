@@ -492,7 +492,8 @@ function renderDraw(){
 function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border"><table class="data-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${(typeof c==='string'&&c.includes('<')&&c.includes('>'))?c:esc(c??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
 
 function renderSchedule(){
-  let entries = state.events.map(e => {
+  let entries = [];
+  state.events.forEach(e => {
     const regs = eventRegs(e);
     let bilPeserta = regs.length;
     if(e.type === 'Relay'){
@@ -500,9 +501,35 @@ function renderSchedule(){
       regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
       bilPeserta = Object.keys(byHouse).filter(h => byHouse[h].length > 0).length;
     }
-    return {
+
+    if (e.type === 'Balapan' || e.type === 'Relay') {
+      const heats = getEventHeats(e);
+      if (heats && heats.length > 0) {
+        heats.forEach((heat, heatIdx) => {
+          entries.push({
+            id: e.id,
+            no: `${e.no} (${heat.heatName})`,
+            rawNo: e.no,
+            name: `${e.name} - ${heat.heatName}`,
+            category: e.category,
+            type: e.type,
+            status: e.status || 'Belum Mula',
+            date: e.date || '2026-05-08',
+            startTime: e.startTime || '08:00',
+            reportTime: e.reportTime || '07:30',
+            lastCallTime: e.lastCallTime || '07:40',
+            arenaTime: e.arenaTime || '07:50',
+            bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong')).length
+          });
+        });
+        return;
+      }
+    }
+
+    entries.push({
       id: e.id,
       no: e.no,
+      rawNo: e.no,
       name: e.name,
       category: e.category,
       type: e.type,
@@ -513,10 +540,10 @@ function renderSchedule(){
       lastCallTime: e.lastCallTime || '07:40',
       arenaTime: e.arenaTime || '07:50',
       bilPeserta
-    };
+    });
   });
 
-  entries.sort((a,b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+  entries.sort((a,b) => (a.date + a.startTime).localeCompare(b.date + b.startTime) || a.rawNo.localeCompare(b.rawNo));
 
   const grouped = {};
   entries.forEach(item => {
@@ -579,7 +606,7 @@ function renderSchedule(){
     </div>`;
   }).join('');
 
-  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding (Tarik Auto dari Master Acara).')}
+  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding (Menarik pecahan siri automatik dari Master Undian).')}
   ${sectionsHtml || '<p class="p-10 text-center text-slate-500">Tiada jadual acara direkodkan.</p>'}`;
 }
 
