@@ -505,24 +505,61 @@ function renderSchedule(){
     if (e.type === 'Balapan' || e.type === 'Relay') {
       const heats = getEventHeats(e);
       if (heats && heats.length > 0) {
-        heats.forEach((heat, heatIdx) => {
+        if (heats.length > 1) {
+          heats.forEach((heat) => {
+            entries.push({
+              id: e.id,
+              no: `${e.no} (${heat.heatName})`,
+              rawNo: e.no,
+              name: `${e.name} - ${heat.heatName}`,
+              category: e.category,
+              type: e.type,
+              status: e.status || 'Belum Mula',
+              date: e.date || '2026-05-08',
+              startTime: e.startTime || '08:00',
+              reportTime: e.reportTime || '07:30',
+              lastCallTime: e.lastCallTime || '07:40',
+              arenaTime: e.arenaTime || '07:50',
+              bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong')).length
+            });
+          });
+
           entries.push({
-            id: e.id,
-            no: `${e.no} (${heat.heatName})`,
+            id: e.id + '-final',
+            no: e.no,
             rawNo: e.no,
-            name: `${e.name} - ${heat.heatName}`,
+            name: `${e.name} - Akhir`,
             category: e.category,
             type: e.type,
-            status: e.status || 'Belum Mula',
+            status: 'Belum Mula',
             date: e.date || '2026-05-08',
-            startTime: e.startTime || '08:00',
-            reportTime: e.reportTime || '07:30',
-            lastCallTime: e.lastCallTime || '07:40',
-            arenaTime: e.arenaTime || '07:50',
-            bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong')).length
+            startTime: '10:30',
+            reportTime: '10:00',
+            lastCallTime: '10:10',
+            arenaTime: '10:20',
+            bilPeserta: getEventLanes(e)
           });
-        });
-        return;
+          return;
+        } else {
+          heats.forEach((heat) => {
+            entries.push({
+              id: e.id,
+              no: e.no,
+              rawNo: e.no,
+              name: e.name,
+              category: e.category,
+              type: e.type,
+              status: e.status || 'Belum Mula',
+              date: e.date || '2026-05-08',
+              startTime: e.startTime || '08:00',
+              reportTime: e.reportTime || '07:30',
+              lastCallTime: e.lastCallTime || '07:40',
+              arenaTime: e.arenaTime || '07:50',
+              bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong')).length
+            });
+          });
+          return;
+        }
       }
     }
 
@@ -781,20 +818,20 @@ function judgePreview(e){
      });
 
      return `
-       <div class="mb-3">
-         <h5 class="text-xs font-bold uppercase tracking-wider text-[#146b8c] mb-1.5">${heat.heatName}</h5>
-         ${miniGrid(sortedRows.map(r=>{
-           if(e.type==='Relay'){
-             const repStudent=r.athletes?.[0];
-             const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
-             const rankDisplay = res?.rank ? `#${res.rank}` : '—';
-             return [rankDisplay, r.lane, r.house, r.athletes?.map(a=>a.name).join(', ')||'Kosong', res?.value||'—', res?.status||'—'];
-           } else {
-             const res=r.studentId?rr.find(x=>x.studentId===r.studentId):null;
-             const rankDisplay = res?.rank ? `#${res.rank}` : '—';
-             return [rankDisplay, r.lane, r.bib, r.name, res?.value||'—', res?.status||'—'];
-           }
-         }), e.type==='Relay'?['Kedudukan','Lorong','Rumah Sukan','Atlet','Masa','Status']:['Kedudukan','Lorong','Bib','Atlet','Masa','Status'])}
+        <div class="mb-3">
+          <h5 class="text-xs font-bold uppercase tracking-wider text-[#146b8c] mb-1.5">${heat.heatName}</h5>
+          ${miniGrid(sortedRows.map(r=>{
+            if(e.type==='Relay'){
+              const repStudent=r.athletes?.[0];
+              const res=repStudent?rr.find(x=>x.studentId===repStudent.id):null;
+              const rankDisplay = res?.rank ? `#${res.rank}` : '—';
+              return [rankDisplay, r.lane, r.house, r.athletes?.map(a=>a.name).join(', ')||'Kosong', res?.value||'—', res?.status||'—'];
+            } else {
+              const res=r.studentId?rr.find(x=>x.studentId===r.studentId):null;
+              const rankDisplay = res?.rank ? `#${res.rank}` : '—';
+              return [rankDisplay, r.lane, r.bib, r.name, res?.value||'—', res?.status||'—'];
+            }
+          }), e.type==='Relay'?['Kedudukan','Lorong','Rumah Sukan','Atlet','Masa','Status']:['Kedudukan','Lorong','Bib','Atlet','Masa','Status'])}
        </div>
      `;
    }).join('');
@@ -1160,9 +1197,9 @@ function renderArchive(){
  if(bin.length === 0){
    return `${pageHead('Tong Kitar Semula','Senarai rekod murid atau acara yang dipadam. Anda boleh memulihkan (restore) atau memadamnya secara kekal.')}
    <div class="panel p-8 text-center text-slate-500">
-     <i data-lucide="trash-2" class="mx-auto mb-4 h-12 w-12 text-slate-300"></i>
-     <h3 class="text-lg font-bold text-[#10243e] mb-1">Tong Sampah Kosong</h3>
-     <p class="max-w-md mx-auto text-sm">Setiap data murid atau acara yang dipadam akan dihantar ke sini. Ini bagi mengelakkan kehilangan data secara tidak sengaja.</p>
+      <i data-lucide="trash-2" class="mx-auto mb-4 h-12 w-12 text-slate-300"></i>
+      <h3 class="text-lg font-bold text-[#10243e] mb-1">Tong Sampah Kosong</h3>
+      <p class="max-w-md mx-auto text-sm">Setiap data murid atau acara yang dipadam akan dihantar ke sini. Ini bagi mengelakkan kehilangan data secara tidak sengaja.</p>
    </div>`;
  }
  return `${pageHead('Tong Kitar Semula','Senarai rekod murid atau acara yang dipadam. Anda boleh memulihkan (restore) atau memadamnya secara kekal.', action('Kosongkan Tong','trash-2','empty-bin','btn-danger'))}
