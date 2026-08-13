@@ -659,7 +659,8 @@ function renderSchedule(){
   ${sectionsHtml || '<p class="p-10 text-center text-slate-500">Tiada jadual acara direkodkan.</p>'}`;
 }
 
-function openScheduleEdit(eventId){
+function openScheduleEdit(synthId){
+  const eventId = String(synthId).split('-heat-')[0].split('-final')[0];
   const e = state.events.find(x => x.id === eventId);
   if(!e) return;
   openModal(`Kemaskini Masa · ${e.no} ${e.name}`, `
@@ -2279,7 +2280,6 @@ async function initAfterLogin(){
  render();
  iconRefresh();
 
- // Auto-sync background polling setiap 30 saat untuk tarik data terkini secara senyap
  setInterval(async () => {
    if (!busy && GOOGLE_ID_TOKEN) {
      try {
