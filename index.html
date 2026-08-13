@@ -1728,7 +1728,7 @@ function openJudge(eventId){
           return { s, attempts, value, status };
       }).filter(x => x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
 
-      entries.sort((a, b) => b.value - a.value);
+      entries.sort((a, b) => b.value - b.value);
       state.results = state.results.filter(r => r.eventId !== eventId);
 
       entries.forEach((x, i) => {
@@ -2278,6 +2278,18 @@ async function initAfterLogin(){
  updateLogos();
  render();
  iconRefresh();
+
+ // Auto-sync background polling setiap 30 saat untuk tarik data terkini secara senyap
+ setInterval(async () => {
+   if (!busy && GOOGLE_ID_TOKEN) {
+     try {
+       const freshData = await apiGet();
+       applyRemoteRecords(freshData);
+     } catch (err) {
+       console.error('Auto-sync background ralat:', err);
+     }
+   }
+ }, 30000);
 
  const bannerEl = $('#dashboard-banner');
  if(bannerEl) bannerEl.src = state.settings.banner || '';
