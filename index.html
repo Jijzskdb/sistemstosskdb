@@ -519,6 +519,13 @@ function renderSchedule(){
       if (heats && heats.length > 0) {
         if (!isDirectFinal) {
           heats.forEach((heat, idx) => {
+            const sched = e.heatSchedules?.[idx] || {
+              date: e.date || '2026-05-08',
+              startTime: e.startTime || '08:00',
+              reportTime: e.reportTime || '07:30',
+              lastCallTime: e.lastCallTime || '07:40',
+              arenaTime: e.arenaTime || '07:50'
+            };
             entries.push({
               id: `${e.id}-heat-${idx}`,
               no: `${e.no} (${heat.heatName})`,
@@ -527,15 +534,18 @@ function renderSchedule(){
               category: e.category,
               type: e.type,
               status: e.status || 'Belum Mula',
-              date: e.date || '2026-05-08',
-              startTime: e.startTime || '08:00',
-              reportTime: e.reportTime || '07:30',
-              lastCallTime: e.lastCallTime || '07:40',
-              arenaTime: e.arenaTime || '07:50',
+              ...sched,
               bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong')).length
             });
           });
 
+          const finalSched = e.heatSchedules?.['final'] || {
+            date: e.date || '2026-05-08',
+            startTime: '10:30',
+            reportTime: '10:00',
+            lastCallTime: '10:10',
+            arenaTime: '10:20'
+          };
           entries.push({
             id: `${e.id}-final`,
             no: `${e.no} (Akhir)`,
@@ -544,29 +554,28 @@ function renderSchedule(){
             category: e.category,
             type: e.type,
             status: 'Belum Mula',
-            date: e.date || '2026-05-08',
-            startTime: '10:30',
-            reportTime: '10:00',
-            lastCallTime: '10:10',
-            arenaTime: '10:20',
+            ...finalSched,
             bilPeserta: lanes
           });
           return;
         } else {
-          heats.forEach((heat) => {
+          heats.forEach((heat, idx) => {
+            const sched = e.heatSchedules?.[idx] || {
+              date: e.date || '2026-05-08',
+              startTime: e.startTime || '08:00',
+              reportTime: e.reportTime || '07:30',
+              lastCallTime: e.lastCallTime || '07:40',
+              arenaTime: e.arenaTime || '07:50'
+            };
             entries.push({
-              id: e.id,
+              id: `${e.id}-heat-${idx}`,
               no: e.no,
               rawNo: e.no,
               name: e.name,
               category: e.category,
               type: e.type,
               status: e.status || 'Belum Mula',
-              date: e.date || '2026-05-08',
-              startTime: e.startTime || '08:00',
-              reportTime: e.reportTime || '07:30',
-              lastCallTime: e.lastCallTime || '07:40',
-              arenaTime: e.arenaTime || '07:50',
+              ...sched,
               bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong')).length
             });
           });
@@ -575,6 +584,13 @@ function renderSchedule(){
       }
     }
 
+    const sched = e.heatSchedules?.[0] || {
+      date: e.date || '2026-05-08',
+      startTime: e.startTime || '08:00',
+      reportTime: e.reportTime || '07:30',
+      lastCallTime: e.lastCallTime || '07:40',
+      arenaTime: e.arenaTime || '07:50'
+    };
     entries.push({
       id: e.id,
       no: e.no,
@@ -583,11 +599,7 @@ function renderSchedule(){
       category: e.category,
       type: e.type,
       status: e.status || 'Belum Mula',
-      date: e.date || '2026-05-08',
-      startTime: e.startTime || '08:00',
-      reportTime: e.reportTime || '07:30',
-      lastCallTime: e.lastCallTime || '07:40',
-      arenaTime: e.arenaTime || '07:50',
+      ...sched,
       bilPeserta
     });
   });
@@ -660,35 +672,71 @@ function renderSchedule(){
 }
 
 function openScheduleEdit(synthId){
-  const eventId = String(synthId).split('-heat-')[0].split('-final')[0];
+  const parts = String(synthId).split('-heat-');
+  let eventId, heatKey;
+  if(parts.length > 1) {
+    eventId = parts[0];
+    heatKey = parts[1];
+  } else if(String(synthId).includes('-final')) {
+    eventId = String(synthId).split('-final')[0];
+    heatKey = 'final';
+  } else {
+    eventId = synthId;
+    heatKey = '0';
+  }
+
   const e = state.events.find(x => x.id === eventId);
   if(!e) return;
-  openModal(`Kemaskini Masa · ${e.no} ${e.name}`, `
+
+  if(!e.heatSchedules) e.heatSchedules = {};
+  const currentSched = e.heatSchedules[heatKey] || {
+    date: e.date || '2026-05-08',
+    startTime: heatKey === 'final' ? '10:30' : (e.startTime || '08:00'),
+    reportTime: heatKey === 'final' ? '10:00' : (e.reportTime || '07:30'),
+    lastCallTime: heatKey === 'final' ? '10:10' : (e.lastCallTime || '07:40'),
+    arenaTime: heatKey === 'final' ? '10:20' : (e.arenaTime || '07:50')
+  };
+
+  const heatTitleLabel = heatKey === 'final' ? 'Peringkat Akhir' : (parts.length > 1 ? `Separuh Akhir ${parseInt(heatKey)+1}` : e.name);
+
+  openModal(`Kemaskini Masa · ${e.no} ${heatTitleLabel}`, `
     <form id="schedule-edit-form" class="space-y-4">
       <input type="hidden" id="se-id" value="${e.id}">
-      <label class="block"><span class="font-bold text-sm mb-1 block">Tarikh Acara</span><input id="se-date" type="date" class="field" value="${e.date || '2026-05-08'}" required></label>
-      <label class="block"><span class="font-bold text-sm mb-1 block text-[#146b8c]">Masa Bertanding (Start Time)</span><input id="se-start" type="time" class="field" value="${e.startTime || '08:00'}" required></label>
-      <label class="block"><span class="font-bold text-sm mb-1 block text-amber-800">Masa Lapor Diri (Report Time)</span><input id="se-report" type="time" class="field" value="${e.reportTime || '07:30'}" required></label>
-      <label class="block"><span class="font-bold text-sm mb-1 block">Panggilan Akhir (Last Call)</span><input id="se-last" type="time" class="field" value="${e.lastCallTime || '07:40'}" required></label>
-      <label class="block"><span class="font-bold text-sm mb-1 block">Masuk Arena (Call Room)</span><input id="se-arena" type="time" class="field" value="${e.arenaTime || '07:50'}" required></label>
-      <button class="btn btn-primary w-full mt-2" type="submit">Simpan Masa Acara</button>
+      <input type="hidden" id="se-heatkey" value="${heatKey}">
+      <label class="block"><span class="font-bold text-sm mb-1 block">Tarikh Acara</span><input id="se-date" type="date" class="field" value="${currentSched.date}" required></label>
+      <label class="block"><span class="font-bold text-sm mb-1 block text-[#146b8c]">Masa Bertanding (Start Time)</span><input id="se-start" type="time" class="field" value="${currentSched.startTime}" required></label>
+      <label class="block"><span class="font-bold text-sm mb-1 block text-amber-800">Masa Lapor Diri (Report Time)</span><input id="se-report" type="time" class="field" value="${currentSched.reportTime}" required></label>
+      <label class="block"><span class="font-bold text-sm mb-1 block">Panggilan Akhir (Last Call)</span><input id="se-last" type="time" class="field" value="${currentSched.lastCallTime}" required></label>
+      <label class="block"><span class="font-bold text-sm mb-1 block">Masuk Arena (Call Room)</span><input id="se-arena" type="time" class="field" value="${currentSched.arenaTime}" required></label>
+      <button class="btn btn-primary w-full mt-2" type="submit">Simpan Masa Siri Ini</button>
     </form>
   `);
 
   $('#schedule-edit-form').onsubmit = async ev => {
     ev.preventDefault();
     const id = $('#se-id').value;
+    const hKey = $('#se-heatkey').value;
     const evObj = state.events.find(x => x.id === id);
     if(evObj){
-      evObj.date = $('#se-date').value;
-      evObj.startTime = $('#se-start').value;
-      evObj.reportTime = $('#se-report').value;
-      evObj.lastCallTime = $('#se-last').value;
-      evObj.arenaTime = $('#se-arena').value;
+      if(!evObj.heatSchedules) evObj.heatSchedules = {};
+      evObj.heatSchedules[hKey] = {
+        date: $('#se-date').value,
+        startTime: $('#se-start').value,
+        reportTime: $('#se-report').value,
+        lastCallTime: $('#se-last').value,
+        arenaTime: $('#se-arena').value
+      };
+      if(hKey === '0' && !parts.length > 1) {
+        evObj.date = $('#se-date').value;
+        evObj.startTime = $('#se-start').value;
+        evObj.reportTime = $('#se-report').value;
+        evObj.lastCallTime = $('#se-last').value;
+        evObj.arenaTime = $('#se-arena').value;
+      }
       await saveTypes(['events']);
       closeModal();
       render();
-      toast('Masa acara berjaya dikemaskini.');
+      toast('Masa siri acara ini berjaya dikemaskini secara berasingan.');
     }
   };
 }
