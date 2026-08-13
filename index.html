@@ -329,7 +329,27 @@ function laneParticipants(e){
 function getEventHeats(e) {
   const lanes = getEventLanes(e);
   const regs = eventRegs(e);
-  if (regs.length === 0) return [];
+  if (regs.length === 0) {
+    if (e.type === 'Relay') {
+      return [{
+        heatName: 'Akhir',
+        rows: Array.from({length: lanes}, (_, i) => ({ lane: i + 1, house: '—', athletes: [] }))
+      }];
+    }
+    if (e.type === 'Balapan') {
+      return [
+        {
+          heatName: 'Separuh Akhir 1',
+          rows: Array.from({length: lanes}, (_, i) => ({ lane: i + 1, bib: '—', name: 'Kosong', house: '—', studentId: null }))
+        },
+        {
+          heatName: 'Akhir',
+          rows: Array.from({length: lanes}, (_, i) => ({ lane: i + 1, bib: '—', name: 'Menunggu Peserta', house: '—', studentId: null }))
+        }
+      ];
+    }
+    return [];
+  }
 
   if (e.type === 'Relay') {
     const byHouse = {};
@@ -388,6 +408,14 @@ function getEventHeats(e) {
       });
       heats.push({ heatName, rows });
     }
+
+    if (participantIds.length > lanes) {
+      heats.push({
+        heatName: 'Akhir',
+        rows: Array.from({length: lanes}, (_, i) => ({ lane: i + 1, bib: '—', name: 'Menunggu Pemenang Separuh Akhir', house: '—', studentId: null }))
+      });
+    }
+
     return heats;
   }
 
@@ -519,43 +547,26 @@ function renderSchedule(){
       if (heats && heats.length > 0) {
         if (!isDirectFinal) {
           heats.forEach((heat, idx) => {
-            const sched = e.heatSchedules?.[idx] || {
+            const isHeatFinal = heat.heatName.toLowerCase().includes('akhir') && !heat.heatName.toLowerCase().includes('separuh');
+            const heatKey = isHeatFinal ? 'final' : String(idx);
+            const sched = e.heatSchedules?.[heatKey] || {
               date: e.date || '2026-05-08',
-              startTime: e.startTime || '08:00',
-              reportTime: e.reportTime || '07:30',
-              lastCallTime: e.lastCallTime || '07:40',
-              arenaTime: e.arenaTime || '07:50'
+              startTime: isHeatFinal ? '10:30' : (e.startTime || '08:00'),
+              reportTime: isHeatFinal ? '10:00' : (e.reportTime || '07:30'),
+              lastCallTime: isHeatFinal ? '10:10' : (e.lastCallTime || '07:40'),
+              arenaTime: isHeatFinal ? '10:20' : (e.arenaTime || '07:50')
             };
             entries.push({
-              id: `${e.id}-heat-${idx}`,
+              id: `${e.id}-${heatKey === 'final' ? 'final' : 'heat-' + idx}`,
               no: `${e.no} (${heat.heatName})`,
-              rawNo: e.no,
+              rawNo: e.no + (isHeatFinal ? 'z' : ''),
               name: `${e.name} - ${heat.heatName}`,
               category: e.category,
               type: e.type,
               status: e.status || 'Belum Mula',
               ...sched,
-              bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong')).length
+              bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong' && r.name !== 'Menunggu Peserta')).length
             });
-          });
-
-          const finalSched = e.heatSchedules?.['final'] || {
-            date: e.date || '2026-05-08',
-            startTime: '10:30',
-            reportTime: '10:00',
-            lastCallTime: '10:10',
-            arenaTime: '10:20'
-          };
-          entries.push({
-            id: `${e.id}-final`,
-            no: `${e.no} (Akhir)`,
-            rawNo: e.no + 'z',
-            name: `${e.name} - Akhir`,
-            category: e.category,
-            type: e.type,
-            status: 'Belum Mula',
-            ...finalSched,
-            bilPeserta: lanes
           });
           return;
         } else {
@@ -576,7 +587,7 @@ function renderSchedule(){
               type: e.type,
               status: e.status || 'Belum Mula',
               ...sched,
-              bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong')).length
+              bilPeserta: heat.rows.filter(r => r.studentId || (r.athletes && r.athletes.length > 0) || (r.name && r.name !== 'Kosong' && r.name !== 'Menunggu Peserta')).length
             });
           });
           return;
