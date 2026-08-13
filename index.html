@@ -257,7 +257,7 @@ function renderStudents() {
 
   return `${pageHead('Master Murid', 'Urus profil murid, Bib automatik, status pendaftaran & pinjaman kategori.', action('Tambah Murid', 'user-plus', 'add-student', 'btn-primary') + action('Import Excel', 'upload', 'import-students') + action('Jana PDF', 'printer', 'pdf-students') + action('Export Excel', 'download', 'export-students'))}
  <input id="file-import" type="file" accept=".csv,.xlsx,.xls" class="hidden">
- <section class="panel mb-5 grid gap-3 p-4 md:grid-cols-[1fr_220px]"><label><span class="mb-1 block text-xs font-bold text-slate-500">Carian Murid</span><input id="student-search" class="field" value="${esc(filters.search)}" placeholder="Nama, Bib atau kelas"></label><label><span class="mb-1 block text-xs font-bold text-slate-500">Rumah Sukan</span><select id="house-filter" class="field"><option>Semua</option>${houses.map(h => `<option ${filters.house === h ? 'selected' : ''}>${h}</option>`).join('')}</select></label></section>
+ <section class="panel mb-5 grid gap-4 p-4 md:grid-cols-[1fr_220px]"><label><span class="mb-1 block text-xs font-bold text-slate-500">Carian Murid</span><input id="student-search" class="field" value="${esc(filters.search)}" placeholder="Nama, Bib atau kelas"></label><label><span class="mb-1 block text-xs font-bold text-slate-500">Rumah Sukan</span><select id="house-filter" class="field"><option>Semua</option>${houses.map(h => `<option ${filters.house === h ? 'selected' : ''}>${h}</option>`).join('')}</select></label></section>
  <section class="panel overflow-hidden">
   <div class="table-wrap">
     <table class="data-table">
@@ -493,9 +493,11 @@ function miniGrid(rows,heads){return `<div class="table-wrap rounded-xl border">
 
 function renderSchedule(){
   let entries = [];
+  
   state.events.forEach(e => {
     const regs = eventRegs(e);
     let bilPeserta = regs.length;
+    
     if(e.type === 'Relay'){
       const byHouse = {};
       regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
@@ -504,11 +506,21 @@ function renderSchedule(){
 
     if (e.type === 'Balapan' || e.type === 'Relay') {
       const heats = getEventHeats(e);
+      const lanes = getEventLanes(e);
+      
+      let participantCount = regs.length;
+      if(e.type === 'Relay'){
+        const byHouse={};
+        regs.forEach(s=>{ (byHouse[s.house]||=[]).push(s); });
+        participantCount = Object.keys(byHouse).filter(h=>byHouse[h].length>0).length;
+      }
+      const isDirectFinal = participantCount <= lanes;
+
       if (heats && heats.length > 0) {
-        if (heats.length > 1) {
-          heats.forEach((heat) => {
+        if (!isDirectFinal) {
+          heats.forEach((heat, idx) => {
             entries.push({
-              id: e.id,
+              id: `${e.id}-heat-${idx}`,
               no: `${e.no} (${heat.heatName})`,
               rawNo: e.no,
               name: `${e.name} - ${heat.heatName}`,
@@ -525,9 +537,9 @@ function renderSchedule(){
           });
 
           entries.push({
-            id: e.id + '-final',
-            no: e.no,
-            rawNo: e.no,
+            id: `${e.id}-final`,
+            no: `${e.no} (Akhir)`,
+            rawNo: e.no + 'z',
             name: `${e.name} - Akhir`,
             category: e.category,
             type: e.type,
@@ -537,7 +549,7 @@ function renderSchedule(){
             reportTime: '10:00',
             lastCallTime: '10:10',
             arenaTime: '10:20',
-            bilPeserta: getEventLanes(e)
+            bilPeserta: lanes
           });
           return;
         } else {
@@ -643,7 +655,7 @@ function renderSchedule(){
     </div>`;
   }).join('');
 
-  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding (Menarik pecahan siri automatik dari Master Undian).')}
+  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding (Menarik pecahan siri automatik seiring struktur Borang Hakim).')}
   ${sectionsHtml || '<p class="p-10 text-center text-slate-500">Tiada jadual acara direkodkan.</p>'}`;
 }
 
