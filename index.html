@@ -147,8 +147,8 @@ const defaultData={
    {id:'r3',studentId:'s4',eventId:'e4'}
   ],
   results:[
-   {id:'x1',eventId:'e4',studentId:'s1',value:14.22,rank:1,status:'SAH',medal:'Emas',points:10},
-   {id:'x2',eventId:'e4',studentId:'s2',value:15.05,rank:2,status:'SAH',medal:'Perak',points:9}
+   {id:'x1',eventId:'e4',studentId:'s1',value:'27:15:30',rank:1,status:'SAH',medal:'Emas',points:10},
+   {id:'x2',eventId:'e4',studentId:'s2',value:'30:34:07',rank:2,status:'SAH',medal:'Perak',points:9}
   ],
   activities:['Sistem dimulakan dengan data simulasi awal.'],
   recycleBin:[]
@@ -1642,7 +1642,7 @@ function openJudge(eventId){
           ${heat.rows.map(r => {
             const repStudent = r.athletes?.[0];
             const res = repStudent ? rr.find(x => x.studentId === repStudent.id) : null;
-            return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>Lorong ${r.lane} · Rumah ${r.house}</b><span class="text-xs text-slate-400">${r.athletes?.length||0} atlet</span></div><p class="text-xs text-slate-500 mb-2">Pelari: ${r.athletes?.map(a => a.name).join(', ') || 'Tiada atlet'}</p><div class="grid grid-cols-2 gap-2"><input data-relay-house="${r.house}" type="number" step=".01" class="field" placeholder="Masa" value="${res?.value||''}"><select data-relay-status="${r.house}" class="field"><option ${res?.status==='SAH'?'selected':''}>SAH</option><option ${res?.status==='DNS'?'selected':''}>DNS</option><option ${res?.status==='DQ'?'selected':''}>DQ</option><option ${res?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
+            return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>Lorong ${r.lane} · Rumah ${r.house}</b><span class="text-xs text-slate-400">${r.athletes?.length||0} atlet</span></div><p class="text-xs text-slate-500 mb-2">Pelari: ${r.athletes?.map(a => a.name).join(', ') || 'Tiada atlet'}</p><div class="grid grid-cols-2 gap-2"><input data-relay-house="${r.house}" type="text" class="field" placeholder="Masa" value="${res?.value||''}"><select data-relay-status="${r.house}" class="field"><option ${res?.status==='SAH'?'selected':''}>SAH</option><option ${res?.status==='DNS'?'selected':''}>DNS</option><option ${res?.status==='DQ'?'selected':''}>DQ</option><option ${res?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
           }).join('')}
         </div>
       </div>
@@ -1655,20 +1655,17 @@ function openJudge(eventId){
         heat.rows.forEach(r => {
           if(!r.athletes?.length) return;
           const valInput = $(`[data-relay-house="${r.house}"]`), statusInput = $(`[data-relay-status="${r.house}"]`);
-          const value = valInput ? (+valInput.value || 0) : 0;
+          const value = valInput ? valInput.value.trim() : '';
           const status = statusInput ? statusInput.value : 'SAH';
-          if(value > 0 && status !== 'DNS' && status !== 'DQ'){
+          if(value !== '' && status !== 'DNS' && status !== 'DQ'){
             entries.push({house: r.house, repStudent: r.athletes[0], value, status});
           }
         });
       });
-      entries.sort((a, b) => a.value - b.value);
       state.results = state.results.filter(r => r.eventId !== eventId);
       entries.forEach((x, i) => {
         const rank = i + 1, medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '', points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
-        let status = x.status;
-        if(e.record && x.value < e.record) status = 'RB';
-        state.results.push({id: uid('x'), eventId, studentId: x.repStudent.id, value: x.value, rank, status, medal, points});
+        state.results.push({id: uid('x'), eventId, studentId: x.repStudent.id, value: x.value, rank, status: x.status, medal, points});
       });
       e.status = 'Selesai';
       await saveTypes(['results', 'events']);
@@ -1690,7 +1687,7 @@ function openJudge(eventId){
             if(!r.studentId) return '';
             const s = state.students.find(x => x.id === r.studentId);
             const rRes = s ? rr.find(x => x.studentId === s.id) : null;
-            return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${r.lane}</span></div><div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="number" step=".01" class="field" placeholder="Masa" value="${rRes?.value||''}"><select data-status="${s.id}" class="field"><option ${rRes?.status==='SAH'?'selected':''}>SAH</option><option ${rRes?.status==='DNS'?'selected':''}>DNS</option><option ${rRes?.status==='DQ'?'selected':''}>DQ</option><option ${rRes?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
+            return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${r.lane}</span></div><div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="text" class="field" placeholder="Masa" value="${rRes?.value||''}"><select data-status="${s.id}" class="field"><option ${rRes?.status==='SAH'?'selected':''}>SAH</option><option ${rRes?.status==='DNS'?'selected':''}>DNS</option><option ${rRes?.status==='DQ'?'selected':''}>DQ</option><option ${rRes?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
           }).join('')}
         </div>
       </div>
@@ -1702,12 +1699,11 @@ function openJudge(eventId){
       let entries = participants.map(s => {
         const valInput = $(`[data-value="${s.id}"]`);
         const statusInput = $(`[data-status="${s.id}"]`);
-        const value = valInput ? (+valInput.value || 0) : 0;
+        const value = valInput ? valInput.value.trim() : '';
         const status = statusInput ? statusInput.value : 'SAH';
         return {s, value, status};
-      }).filter(x => x.value > 0 && x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
+      }).filter(x => x.value !== '' && x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
       
-      entries.sort((a, b) => a.value - b.value);
       state.results = state.results.filter(r => r.eventId !== eventId);
       
       if (!isDirectFinal && heats.length > 1 && !heats[0].heatName.includes('Akhir')) {
@@ -1721,7 +1717,6 @@ function openJudge(eventId){
           const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
           const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
           let status = x.status;
-          if(e.record && x.value < e.record) status = 'RB';
           state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status, medal, points});
         });
         e.status = 'Selesai';
@@ -1741,8 +1736,8 @@ function openJudge(eventId){
     
     openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-3">${regs.map(s => {
       const rRes = rr.find(x => x.studentId === s.id);
-      const timeVal = rRes?.value && rRes.value !== rRes.rank ? rRes.value : '';
-      return `<div class="rounded-xl border p-3 flex items-center justify-between gap-3 flex-wrap"><div class="min-w-0 flex-1"><b>${s.bib} · ${s.name}</b><p class="text-xs text-slate-500">Rumah: ${s.house}</p></div><div class="flex gap-2"><div class="w-28"><label class="text-xs block mb-1">Kedudukan</label><input data-xc-student="${s.id}" type="number" min="1" class="field !p-2" placeholder="Cth: 1" value="${rRes?.rank || ''}"></div><div class="w-28"><label class="text-xs block mb-1">Masa</label><input data-xc-time="${s.id}" type="number" step=".01" class="field !p-2" placeholder="Masa" value="${timeVal}"></div></div></div>`;
+      const timeVal = rRes?.value && String(rRes.value) !== String(rRes.rank) ? rRes.value : '';
+      return `<div class="rounded-xl border p-3 flex items-center justify-between gap-3 flex-wrap"><div class="min-w-0 flex-1"><b>${s.bib} · ${s.name}</b><p class="text-xs text-slate-500">Rumah: ${s.house}</p></div><div class="flex gap-2"><div class="w-28"><label class="text-xs block mb-1">Kedudukan</label><input data-xc-student="${s.id}" type="number" min="1" class="field !p-2" placeholder="Cth: 1" value="${rRes?.rank || ''}"></div><div class="w-36"><label class="text-xs block mb-1">Masa (mm:ss:ms)</label><input data-xc-time="${s.id}" type="text" class="field !p-2" placeholder="27:15:30" value="${timeVal}"></div></div></div>`;
     }).join('') || '<p class="text-slate-500">Tiada peserta berdaftar.</p>'}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Kira Mata Merentas Desa</button></form>`);
     
     $('#judge-form').onsubmit = async ev => {
@@ -1751,7 +1746,7 @@ function openJudge(eventId){
         const rankInput = $(`[data-xc-student="${s.id}"]`);
         const timeInput = $(`[data-xc-time="${s.id}"]`);
         const rank = rankInput ? parseInt(rankInput.value, 10) : 0;
-        const time = timeInput ? (+timeInput.value || 0) : 0;
+        const time = timeInput ? timeInput.value.trim() : '';
         return { s, rank, time };
       }).filter(x => x.rank > 0);
 
@@ -1764,7 +1759,7 @@ function openJudge(eventId){
         const rank = x.rank;
         const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
         const points = crossPoints[rank - 1] || 0;
-        const value = x.time > 0 ? x.time : rank;
+        const value = x.time !== '' ? x.time : rank;
         state.results.push({
           id: uid('x'),
           eventId,
@@ -1809,7 +1804,6 @@ function openJudge(eventId){
           const rank = i + 1, medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
           const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
           let status = x.status;
-          if (e.record && x.value > e.record) status = 'RB';
           state.results.push({
               id: uid('x'),
               eventId,
