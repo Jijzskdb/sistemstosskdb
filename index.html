@@ -411,11 +411,16 @@ function getEventHeats(e) {
 
     if (participantIds.length > lanes) {
       const rr = state.results.filter(r => r.eventId === e.id && r.stage === 'heat');
-      const sortedByTime = [...regs].map(s => {
-        const res = rr.find(x => x.studentId === s.id);
-        return { s, time: res?.value ? parseFloat(res.value) : 999999 };
-      }).sort((a,b) => a.time - b.time);
-      const finalQualifiers = sortedByTime.slice(0, lanes).map(x => x.s);
+      const hasHeatResults = rr.some(x => x.value && x.value.trim() !== '');
+      
+      let finalQualifiers = [];
+      if (hasHeatResults) {
+        const sortedByTime = [...regs].map(s => {
+          const res = rr.find(x => x.studentId === s.id);
+          return { s, time: res?.value ? parseFloat(res.value) : 999999 };
+        }).sort((a,b) => a.time - b.time);
+        finalQualifiers = sortedByTime.slice(0, lanes).map(x => x.s);
+      }
 
       heats.push({
         heatName: 'Akhir',
@@ -1751,8 +1756,8 @@ function openJudge(eventId){
         return {s, value, status};
       }).filter(x => x && x.value !== '');
 
-      // Bersihkan keputusan mengikut stage yang berkenaan
-      state.results = state.results.filter(r => r.eventId !== eventId || (r.stage !== 'heat' && r.stage !== 'final'));
+      // 1. Hanya buang dan kemas kini keputusan peringkat saringan (heat) sahaja tanpa mengusik final event lain
+      state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'heat');
 
       entries.forEach(x => {
         if(x.value !== '') {
@@ -1760,7 +1765,9 @@ function openJudge(eventId){
         }
       });
 
+      // 2. Jika ada data masa akhir dimasukkan, baru kemas kini peringkat final untuk acara ini sahaja
       if (finalEntries.length > 0) {
+        state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
         finalEntries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
         finalEntries.forEach((x, i) => {
           const rank = i + 1;
@@ -1776,7 +1783,7 @@ function openJudge(eventId){
         if(!state.settings.laneDraws) state.settings.laneDraws = {};
         state.settings.laneDraws[e.id] = topQualified;
         
-        toast('Masa Separuh Akhir disimpan! Senarai layak ke Akhir telah dijana di dalam borang.');
+        toast('Masa Separuh Akhir disimpan! Senarai layak ke Akhir telah dikemas kini.');
       }
 
       await saveTypes(['results', 'events', 'settings']);
