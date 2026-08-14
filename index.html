@@ -490,8 +490,8 @@ function renderDraw(){
     }
     const isDirectFinal = participantCount <= lanes;
 
-    if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${regs.length} peserta</span></div><div class="flex flex-wrap gap-2">${regs.map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
-    if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
+    if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} (Akhir) · ${e.name} - Akhir</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${regs.length} peserta</span></div><div class="flex flex-wrap gap-2">${regs.map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
+    if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} (Akhir) · ${e.name} - Akhir</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
     
     if(e.type==='Relay' || e.type==='Balapan'){
       const heats = getEventHeats(e);
@@ -571,7 +571,9 @@ function renderSchedule(){
           return;
         } else {
           heats.forEach((heat, idx) => {
-            const sched = e.heatSchedules?.[idx] || {
+            const isHeatFinal = heat.heatName.toLowerCase().includes('akhir');
+            const heatKey = String(idx);
+            const sched = e.heatSchedules?.[heatKey] || {
               date: e.date || '2026-05-08',
               startTime: e.startTime || '08:00',
               reportTime: e.reportTime || '07:30',
@@ -580,9 +582,9 @@ function renderSchedule(){
             };
             entries.push({
               id: `${e.id}-heat-${idx}`,
-              no: e.no,
+              no: `${e.no} (${heat.heatName})`,
               rawNo: e.no,
-              name: e.name,
+              name: `${e.name} - ${heat.heatName}`,
               category: e.category,
               type: e.type,
               status: e.status || 'Belum Mula',
@@ -595,6 +597,7 @@ function renderSchedule(){
       }
     }
 
+    // Untuk acara padang, merentas desa, atau mana-mana acara tunggal (Terus Akhir)
     const sched = e.heatSchedules?.[0] || {
       date: e.date || '2026-05-08',
       startTime: e.startTime || '08:00',
@@ -604,9 +607,9 @@ function renderSchedule(){
     };
     entries.push({
       id: e.id,
-      no: e.no,
+      no: `${e.no} (Akhir)`,
       rawNo: e.no,
-      name: e.name,
+      name: `${e.name} - Akhir`,
       category: e.category,
       type: e.type,
       status: e.status || 'Belum Mula',
@@ -678,7 +681,7 @@ function renderSchedule(){
     </div>`;
   }).join('');
 
-  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding (Menarik pecahan siri automatik seiring struktur Borang Hakim).')}
+  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding (Semua acara kini lengkap bertagging peringkat siri & akhir).')}
   ${sectionsHtml || '<p class="p-10 text-center text-slate-500">Tiada jadual acara direkodkan.</p>'}`;
 }
 
