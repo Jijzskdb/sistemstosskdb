@@ -497,7 +497,7 @@ function renderDraw(){
       const heats = getEventHeats(e);
       return `<section class="panel p-5">
         <div class="mb-3 flex items-center justify-between">
-          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${lanes} lorong max · ${isDirectFinal ? 'Terus Akhir (Cukup Lorong/Pasukan)' : 'Auto-Siri Separuh Akhir'}</p></div>
+          <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${lanes} lorong max · ${isDirectFinal ? 'Akhir (Cukup Lorong/Pasukan)' : 'Auto-Siri Separuh Akhir'}</p></div>
           <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
         </div>
         ${heats ? heats.map(heat=>`
@@ -952,7 +952,6 @@ function renderWinners(){
    return [e?.no, e?.name, r.rank, s?.bib, s?.name, medalText, r.status];
  }),['No.','Acara','Tempat','Bib','Pemenang','Pingat / Kedudukan','Status'])}</section>`;
 }
-
 function renderStandings(){
  const c=calc();
  const studentMedals = state.students.map(s => {
@@ -1022,13 +1021,21 @@ function renderStandings(){
  };
 
  return `${pageHead('Kedudukan Pingat','Susunan: Emas, Perak, Gangsa, kemudian jumlah mata.',action('Cetak Kedudukan','printer','pdf-standings','btn-primary'))}
- 
- <section class="panel mb-6 overflow-hidden">
-  <h3 class="p-5 font-extrabold text-lg text-[#10243e]">Kedudukan Pingat Rumah Sukan</h3>
-  ${standingTable(c.standing)}
- </section>
+ <div class="grid gap-6 xl:grid-cols-2">
+  <section class="panel overflow-hidden"><h3 class="p-5 font-extrabold">Rumah Sukan</h3>${standingTable(c.standing)}</section>
+  <section class="panel overflow-hidden"><h3 class="p-5 font-extrabold">Penyumbang Pingat Individu</h3>
+    ${miniGrid(studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0).sort((a,b)=>b.totalGold-a.totalGold||b.totalSilver-a.totalSilver).map(x=>[
+      x.s.bib,
+      x.s.name,
+      x.s.className,
+      `<span class="font-bold text-amber-500">${x.indGold}</span> + ${x.teamGold}`,
+      `<span class="font-bold text-slate-400">${x.indSilver}</span> + ${x.teamSilver}`,
+      `<span class="font-bold text-amber-700">${x.indBronze}</span> + ${x.teamBronze}`
+    ]),['Bib','Atlet','Kelas','Emas (Ind+Kump)','Perak (Ind+Kump)','Gangsa (Ind+Kump)'])}
+  </section>
+ </div>
 
- <section class="panel mb-6 p-5">
+ <section class="panel mt-6 p-5">
   <h3 class="mb-4 font-extrabold text-lg text-[#10243e]">Anugerah Olahragawan & Olahragawati Cemerlang</h3>
   <div class="grid gap-4 md:grid-cols-2">
     <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-5">
@@ -1071,21 +1078,8 @@ function renderStandings(){
       </div>
     </div>
   </div>
- </section>
- 
- <section class="panel overflow-hidden">
-   <h3 class="p-5 font-extrabold text-lg text-[#10243e]">Senarai Penyumbang Pingat Individu</h3>
-    ${miniGrid(studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0).sort((a,b)=>b.totalGold-a.totalGold||b.totalSilver-a.totalSilver).map(x=>[
-      x.s.bib,
-      x.s.name,
-      x.s.className,
-      `<span class="font-bold text-amber-500">${x.indGold}</span> + ${x.teamGold}`,
-      `<span class="font-bold text-slate-400">${x.indSilver}</span> + ${x.teamSilver}`,
-      `<span class="font-bold text-amber-700">${x.indBronze}</span> + ${x.teamBronze}`
-    ]),['Bib','Atlet','Kelas','Emas (Ind+Kump)','Perak (Ind+Kump)','Gangsa (Ind+Kump)'])}
  </section>`;
 }
-
 function renderRecords(){
  const rb=state.results.filter(r=>r.status==='RB').map(r=>{
    const e=state.events.find(x=>x.id===r.eventId),s=state.students.find(x=>x.id===r.studentId);
@@ -2046,7 +2040,7 @@ function makeJudgeFormPdf(e){
     <div>
       <h1>STOS · BORANG HAKIM</h1>
       <p>${escPrint(state.settings.school)}</p>
-      <p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)} · <strong style="color: #e4aa36;">PUSINGAN: ${isDirectFinal ? 'TERUS AKHIR' : 'SEPARUH Akhir & Akhir'}</strong></p>
+      <p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)} · <strong style="color: #e4aa36;">PUSINGAN: ${isDirectFinal ? 'AKHIR' : 'SEPARUH AKHIR & AKHIR'}</strong></p>
     </div>
   </div>
   ${contentHTML}
