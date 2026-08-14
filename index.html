@@ -952,6 +952,7 @@ function renderWinners(){
    return [e?.no, e?.name, r.rank, s?.bib, s?.name, medalText, r.status];
  }),['No.','Acara','Tempat','Bib','Pemenang','Pingat / Kedudukan','Status'])}</section>`;
 }
+
 function renderStandings(){
  const c=calc();
  const studentMedals = state.students.map(s => {
@@ -1021,21 +1022,13 @@ function renderStandings(){
  };
 
  return `${pageHead('Kedudukan Pingat','Susunan: Emas, Perak, Gangsa, kemudian jumlah mata.',action('Cetak Kedudukan','printer','pdf-standings','btn-primary'))}
- <div class="grid gap-6 xl:grid-cols-2">
-  <section class="panel overflow-hidden"><h3 class="p-5 font-extrabold">Rumah Sukan</h3>${standingTable(c.standing)}</section>
-  <section class="panel overflow-hidden"><h3 class="p-5 font-extrabold">Penyumbang Pingat Individu</h3>
-    ${miniGrid(studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0).sort((a,b)=>b.totalGold-a.totalGold||b.totalSilver-a.totalSilver).map(x=>[
-      x.s.bib,
-      x.s.name,
-      x.s.className,
-      `<span class="font-bold text-amber-500">${x.indGold}</span> + ${x.teamGold}`,
-      `<span class="font-bold text-slate-400">${x.indSilver}</span> + ${x.teamSilver}`,
-      `<span class="font-bold text-amber-700">${x.indBronze}</span> + ${x.teamBronze}`
-    ]),['Bib','Atlet','Kelas','Emas (Ind+Kump)','Perak (Ind+Kump)','Gangsa (Ind+Kump)'])}
-  </section>
- </div>
+ 
+ <section class="panel mb-6 overflow-hidden">
+  <h3 class="p-5 font-extrabold text-lg text-[#10243e]">Kedudukan Pingat Rumah Sukan</h3>
+  ${standingTable(c.standing)}
+ </section>
 
- <section class="panel mt-6 p-5">
+ <section class="panel mb-6 p-5">
   <h3 class="mb-4 font-extrabold text-lg text-[#10243e]">Anugerah Olahragawan & Olahragawati Cemerlang</h3>
   <div class="grid gap-4 md:grid-cols-2">
     <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-5">
@@ -1078,8 +1071,21 @@ function renderStandings(){
       </div>
     </div>
   </div>
+ </section>
+ 
+ <section class="panel overflow-hidden">
+   <h3 class="p-5 font-extrabold text-lg text-[#10243e]">Senarai Penyumbang Pingat Individu</h3>
+    ${miniGrid(studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0).sort((a,b)=>b.totalGold-a.totalGold||b.totalSilver-a.totalSilver).map(x=>[
+      x.s.bib,
+      x.s.name,
+      x.s.className,
+      `<span class="font-bold text-amber-500">${x.indGold}</span> + ${x.teamGold}`,
+      `<span class="font-bold text-slate-400">${x.indSilver}</span> + ${x.teamSilver}`,
+      `<span class="font-bold text-amber-700">${x.indBronze}</span> + ${x.teamBronze}`
+    ]),['Bib','Atlet','Kelas','Emas (Ind+Kump)','Perak (Ind+Kump)','Gangsa (Ind+Kump)'])}
  </section>`;
 }
+
 function renderRecords(){
  const rb=state.results.filter(r=>r.status==='RB').map(r=>{
    const e=state.events.find(x=>x.id===r.eventId),s=state.students.find(x=>x.id===r.studentId);
