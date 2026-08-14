@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ms">
- <head><script>window["__codeletBootstrap__"]=JSON.parse('{"A":"A","B":"20260810-05-2b86cd6","C":{"Abril Fatface":"YACgEZbkUVE,0","Alfa Slab One":"YACgEYS9sJU,0","Anton":"YACgEcYqQ-A,0","Archivo":"YAHO2-t-jNE,0","Arial":"YAGyDvJ_4Ts,0","Bebas Neue":"YACgESME5ew,0","Bricolage Grotesque":"YAFyMcdwzpc,0","Canva Sans":"YAFLd8sKbwc,2","Caveat":"YALBs2ploWQ,0","Comic Sans MS":"YAHO2VMiyZo,0","Cormorant Garamond":"YAFdJhX-538,0","Courier New":"YAGzXiGs0_8,0","DM Sans":"YAD1aU3sLnI,0","DM Serif Display":"YAD1aYG82rc,0","Forum":"YACgEcnnqB4,0","Fraunces":"YAEul-FRQw4,0","Georgia":"YAGzXkO0pEM,0","Helvetica Neue":"YAFcf6CtJfI,0","Impact":"YAFcfnjI7Vk,0","Inter":"YAFdJvSyp_k,3","Iowan Old Style":"YAGNIFa8j9o,0","Jacques Francois":"YAHO2a5g66Q,0","JetBrains Mono":"YAFdJksXcAk,0","Libre Baskerville":"YACgEUFdPdA,0","Manrope":"YAHO2b2feC4,0","Merriweather":"YACgEXvHxxs,0","Montserrat":"YADLjI9qxTA,0","Nunito":"YACgEX8C5Gg,0","Oleo Script":"YACgEQQ14jI,0","Phantom Sans":"YAHO2E8Pb88,0","Playfair Display":"YACgEYmuCJE,0","Poppins":"YAFdJjbTu24,1","Press Start 2P":"YAFyGr-8pmQ,0","Quicksand":"YADWjpfPmdk,0","Raleway":"YACgEVg3xZg,0","Segoe UI":"YAHNdRD1Klw,0","Source Sans 3":"YAG4lO1Mj10,0","Spectral":"YAHO2rVUHIM,0","Times New Roman":"YAGzXW3gftg,0","Times":"YAGzXW3gftg,0","Ubuntu":"YACgERDU--Q,0","Work Sans":"YAGXhLOKv44,0","Yellowtail":"YACgEYG4kG4,0","ui-monospace":"YADlN8CFZ8Q,0","ui-sans-serif":"YACkoN-xg4g,0"}}');</script>
+ <head><script>window["__codeletBootstrap__"]=JSON.parse('{"A","A","B":"20260810-05-2b86cd6","C":{"Abril Fatface":"YACgEZbkUVE,0","Alfa Slab One":"YACgEYS9sJU,0","Anton":"YACgEcYqQ-A,0","Archivo":"YAHO2-t-jNE,0","Arial":"YAGyDvJ_4Ts,0","Bebas Neue":"YACgESME5ew,0","Bricolage Grotesque":"YAFyMcdwzpc,0","Canva Sans":"YAFLd8sKbwc,2","Caveat":"YALBs2ploWQ,0","Comic Sans MS":"YAHO2VMiyZo,0","Cormorant Garamond":"YAFdJhX-538,0","Courier New":"YAGzXiGs0_8,0","DM Sans":"YAD1aU3sLnI,0","DM Serif Display":"YAD1aYG82rc,0","Forum":"YACgEcnnqB4,0","Fraunces":"YAEul-FRQw4,0","Georgia":"YAGzXkO0pEM,0","Helvetica Neue":"YAFcf6CtJfI,0","Impact":"YAFcfnjI7Vk,0","Inter":"YAFdJvSyp_k,3","Iowan Old Style":"YAGNIFa8j9o,0","Jacques Francois":"YAHO2a5g66Q,0","JetBrains Mono":"YAFdJksXcAk,0","Libre Baskerville":"YACgEUFdPdA,0","Manrope":"YAHO2b2feC4,0","Merriweather":"YACgEXvHxxs,0","Montserrat":"YADLjI9qxTA,0","Nunito":"YACgEX8C5Gg,0","Oleo Script":"YACgEQQ14jI,0","Phantom Sans":"YAHO2E8Pb88,0","Playfair Display":"YACgEYmuCJE,0","Poppins":"YAFdJjbTu24,1","Press Start 2P":"YAFyGr-8pmQ,0","Quicksand":"YADWjpfPmdk,0","Raleway":"YACgEVg3xZg,0","Segoe UI":"YAHNdRD1Klw,0","Source Sans 3":"YAG4lO1Mj10,0","Spectral":"YAHO2rVUHIM,0","Times New Roman":"YAGzXW3gftg,0","Times":"YAGzXW3gftg,0","Ubuntu":"YACgERDU--Q,0","Work Sans":"YAGXhLOKv44,0","Yellowtail":"YACgEYG4kG4,0","ui-monospace":"YADlN8CFZ8Q,0","ui-sans-serif":"YACkoN-xg4g,0"}}');</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>STOS Pengurusan Sukan Tahunan Sekolah</title>
@@ -557,7 +557,7 @@ function renderSchedule(){
               arenaTime: isHeatFinal ? '10:20' : (e.arenaTime || '07:50')
             };
             entries.push({
-              id: `${e.id}-${heatKey === 'final' ? 'final' : 'heat-' + idx}`,
+              id: `${e.id}___${heatKey}`,
               no: `${e.no} (${heat.heatName})`,
               rawNo: e.no + (isHeatFinal ? 'z' : ''),
               name: `${e.name} - ${heat.heatName}`,
@@ -571,7 +571,6 @@ function renderSchedule(){
           return;
         } else {
           heats.forEach((heat, idx) => {
-            const isHeatFinal = heat.heatName.toLowerCase().includes('akhir');
             const heatKey = String(idx);
             const sched = e.heatSchedules?.[heatKey] || {
               date: e.date || '2026-05-08',
@@ -581,7 +580,7 @@ function renderSchedule(){
               arenaTime: e.arenaTime || '07:50'
             };
             entries.push({
-              id: `${e.id}-heat-${idx}`,
+              id: `${e.id}___${heatKey}`,
               no: `${e.no} (${heat.heatName})`,
               rawNo: e.no,
               name: `${e.name} - ${heat.heatName}`,
@@ -597,8 +596,8 @@ function renderSchedule(){
       }
     }
 
-    // Untuk acara padang, merentas desa, atau mana-mana acara tunggal (Terus Akhir)
-    const sched = e.heatSchedules?.[0] || {
+    const heatKey = '0';
+    const sched = e.heatSchedules?.[heatKey] || {
       date: e.date || '2026-05-08',
       startTime: e.startTime || '08:00',
       reportTime: e.reportTime || '07:30',
@@ -606,7 +605,7 @@ function renderSchedule(){
       arenaTime: e.arenaTime || '07:50'
     };
     entries.push({
-      id: e.id,
+      id: `${e.id}___${heatKey}`,
       no: `${e.no} (Akhir)`,
       rawNo: e.no,
       name: `${e.name} - Akhir`,
@@ -686,18 +685,9 @@ function renderSchedule(){
 }
 
 function openScheduleEdit(synthId){
-  const parts = String(synthId).split('-heat-');
-  let eventId, heatKey;
-  if(parts.length > 1) {
-    eventId = parts[0];
-    heatKey = parts[1];
-  } else if(String(synthId).includes('-final')) {
-    eventId = String(synthId).split('-final')[0];
-    heatKey = 'final';
-  } else {
-    eventId = synthId;
-    heatKey = '0';
-  }
+  const parts = String(synthId).split('___');
+  const eventId = parts[0];
+  const heatKey = parts[1] || '0';
 
   const e = state.events.find(x => x.id === eventId);
   if(!e) return;
@@ -711,7 +701,28 @@ function openScheduleEdit(synthId){
     arenaTime: heatKey === 'final' ? '10:20' : (e.arenaTime || '07:50')
   };
 
-  const heatTitleLabel = heatKey === 'final' ? 'Peringkat Akhir' : (parts.length > 1 ? `Separuh Akhir ${parseInt(heatKey)+1}` : e.name);
+  let heatTitleLabel = '';
+  if (heatKey === 'final') {
+    heatTitleLabel = 'Peringkat Akhir';
+  } else if (!isNaN(parseInt(heatKey, 10))) {
+    const lanes = getEventLanes(e);
+    const regs = eventRegs(e);
+    let participantCount = regs.length;
+    if(e.type === 'Relay'){
+      const byHouse = {};
+      regs.forEach(s => { (byHouse[s.house] ||= []).push(s); });
+      participantCount = Object.keys(byHouse).filter(h => byHouse[h].length > 0).length;
+    }
+    const isDirectFinal = participantCount <= lanes;
+
+    if (isDirectFinal || e.type === 'Padang' || e.type === 'Merentas Desa' || (e.type === 'Balapan' && participantCount <= lanes)) {
+      heatTitleLabel = 'Akhir';
+    } else {
+      heatTitleLabel = `Separuh Akhir ${parseInt(heatKey, 10) + 1}`;
+    }
+  } else {
+    heatTitleLabel = heatKey;
+  }
 
   openModal(`Kemaskini Masa · ${e.no} ${heatTitleLabel}`, `
     <form id="schedule-edit-form" class="space-y-4">
@@ -740,7 +751,7 @@ function openScheduleEdit(synthId){
         lastCallTime: $('#se-last').value,
         arenaTime: $('#se-arena').value
       };
-      if(hKey === '0' && !parts.length > 1) {
+      if(hKey === '0' && !String(synthId).includes('___final')) {
         evObj.date = $('#se-date').value;
         evObj.startTime = $('#se-start').value;
         evObj.reportTime = $('#se-report').value;
@@ -2035,7 +2046,7 @@ function makeJudgeFormPdf(e){
     <div>
       <h1>STOS · BORANG HAKIM</h1>
       <p>${escPrint(state.settings.school)}</p>
-      <p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)} · <strong style="color: #e4aa36;">PUSINGAN: ${isDirectFinal ? 'TERUS AKHIR' : 'SEPARUH AKHIR & AKHIR'}</strong></p>
+      <p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)} · <strong style="color: #e4aa36;">PUSINGAN: ${isDirectFinal ? 'TERUS AKHIR' : 'SEPARUH Akhir & Akhir'}</strong></p>
     </div>
   </div>
   ${contentHTML}
