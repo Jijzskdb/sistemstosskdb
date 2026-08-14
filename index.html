@@ -307,14 +307,14 @@ function renderEvents(){
 }
 function eventRegs(e){return state.registrations.filter(r=>r.eventId===e.id).map(r=>state.students.find(s=>s.id===r.studentId)).filter(Boolean)}
 function getEventLanes(e) {
-  if (e.type === 'Relay') return state.settings.maxRelayLanes ?? 6;
+  if (e.type === 'Relay') return state.settings.maxRelayLanes ?? 3;
   if (e.type === 'Balapan') {
     const name = (e.name || '').toUpperCase();
     const match = name.match(/(\d+)\s*M/);
     if (match) {
       const distance = parseInt(match[1], 10);
       if (distance >= 200) {
-        return state.settings.maxLongTrackLanes ?? 4;
+        return state.settings.maxLongTrackLanes ?? 3;
       }
     }
   }
@@ -494,8 +494,8 @@ function createLaneDraw(e){
 
 function renderDraw(){
  const lanesTrack = state.settings.maxTrackLanes ?? 6;
- const lanesLongTrack = state.settings.maxLongTrackLanes ?? 4;
- const lanesRelay = state.settings.maxRelayLanes ?? 6;
+ const lanesLongTrack = state.settings.maxLongTrackLanes ?? 3;
+ const lanesRelay = state.settings.maxRelayLanes ?? 3;
  return `${pageHead('Master Undian','Undian lorong rasmi mengikut tetapan lorong khusus balapan & jarak; urutan ini digunakan oleh Borang Hakim.',action('Cetak Semua','printer','pdf-start','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>{
     const lanes = getEventLanes(e);
@@ -1153,8 +1153,8 @@ function renderSettings(){
  const maxInd = state.settings.maxIndividualEvents ?? 2;
  const maxRelay = state.settings.maxRelayEvents ?? 2;
  const maxTrackLanes = state.settings.maxTrackLanes ?? 6;
- const maxLongTrackLanes = state.settings.maxLongTrackLanes ?? 4;
- const maxRelayLanes = state.settings.maxRelayLanes ?? 6;
+ const maxLongTrackLanes = state.settings.maxLongTrackLanes ?? 3;
+ const maxRelayLanes = state.settings.maxRelayLanes ?? 3;
  return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif, had syarat acara & bilangan lorong.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
  <section class="panel p-6 xl:col-span-2">
@@ -1773,15 +1773,10 @@ function openJudge(eventId){
         e.status = 'Selesai';
         toast('Keputusan Separuh Akhir & Peringkat Akhir Disimpan!');
       } else {
-        entries.sort((a, b) => parseFloat(a.value || 999) - parseFloat(b.value || 999));
-        const topQualified = entries.slice(0, lanes).map(x => x.s.id);
-        if(!state.settings.laneDraws) state.settings.laneDraws = {};
-        state.settings.laneDraws[e.id] = topQualified;
-        
-        toast('Masa Separuh Akhir disimpan! Senarai layak ke Akhir telah dikemas kini.');
+        toast('Masa Separuh Akhir berjaya dikemaskini dan disimpan!');
       }
 
-      await saveTypes(['results', 'events', 'settings']);
+      await saveTypes(['results', 'events']);
       closeModal();
       render();
     };
@@ -2176,8 +2171,8 @@ async function saveSettings(){
  state.settings.maxIndividualEvents = isNaN(maxIndVal) ? 2 : maxIndVal;
  state.settings.maxRelayEvents = isNaN(maxRelayVal) ? 2 : maxRelayVal;
  state.settings.maxTrackLanes = isNaN(maxTrackLanesVal) ? 6 : maxTrackLanesVal;
- state.settings.maxLongTrackLanes = isNaN(maxLongTrackLanesVal) ? 4 : maxLongTrackLanesVal;
- state.settings.maxRelayLanes = isNaN(maxRelayLanesVal) ? 6 : maxRelayLanesVal;
+ state.settings.maxLongTrackLanes = isNaN(maxLongTrackLanesVal) ? 3 : maxLongTrackLanesVal;
+ state.settings.maxRelayLanes = isNaN(maxRelayLanesVal) ? 3 : maxRelayLanesVal;
  
  const savedHouses = [];
  const savedHouseStyles = {};
