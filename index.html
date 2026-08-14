@@ -411,13 +411,12 @@ function getEventHeats(e) {
 
     if (participantIds.length > lanes) {
       const rr = state.results.filter(r => r.eventId === e.id && r.stage === 'heat');
-      
-      const sortedByTime = [...regs].map(s => {
+      const hasHeatResults = rr.some(r => r.value && r.value.trim() !== '');
+
+      const finalQualifiers = hasHeatResults ? [...regs].map(s => {
         const res = rr.find(x => x.studentId === s.id);
         return { s, time: res?.value ? parseFloat(res.value) : 999999 };
-      }).sort((a,b) => a.time - b.time);
-      
-      const finalQualifiers = sortedByTime.slice(0, lanes).map(x => x.s);
+      }).sort((a,b) => a.time - b.time).slice(0, lanes).map(x => x.s) : [];
 
       heats.push({
         heatName: 'Akhir',
