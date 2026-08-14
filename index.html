@@ -410,9 +410,25 @@ function getEventHeats(e) {
     }
 
     if (participantIds.length > lanes) {
+      const rr = state.results.filter(r => r.eventId === e.id);
+      const sortedByTime = [...regs].map(s => {
+        const res = rr.find(x => x.studentId === s.id);
+        return { s, time: res?.value ? parseFloat(res.value) : 999999 };
+      }).sort((a,b) => a.time - b.time);
+      const finalQualifiers = sortedByTime.slice(0, lanes).map(x => x.s);
+
       heats.push({
         heatName: 'Akhir',
-        rows: Array.from({length: lanes}, (_, i) => ({ lane: i + 1, bib: '—', name: 'Menunggu Pemenang Separuh Akhir', house: '—', studentId: null }))
+        rows: Array.from({length: lanes}, (_, i) => {
+          const s = finalQualifiers[i];
+          return {
+            lane: i + 1,
+            bib: s?.bib || '—',
+            name: s ? s.name : 'Menunggu Pemenang Separuh Akhir',
+            house: s?.house || '—',
+            studentId: s?.id || null
+          };
+        })
       });
     }
 
@@ -1670,50 +1686,93 @@ function openJudge(eventId){
     const heats = getEventHeats(e);
     const rr = state.results.filter(r => r.eventId === eventId);
     
-    openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-5">${heats.map(heat => `
-      <div class="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
-        <h4 class="font-extrabold text-[#146b8c] text-sm mb-3 uppercase tracking-wider">${heat.heatName}</h4>
-        <div class="space-y-3">
-          ${heat.rows.map(r => {
-            if(!r.studentId) return '';
-            const s = state.students.find(x => x.id === r.studentId);
-            const rRes = s ? rr.find(x => x.studentId === s.id) : null;
-            return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${r.lane}</span></div><div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="text" class="field" placeholder="Masa" value="${rRes?.value||''}"><select data-status="${s.id}" class="field"><option ${rRes?.status==='SAH'?'selected':''}>SAH</option><option ${rRes?.status==='DNS'?'selected':''}>DNS</option><option ${rRes?.status==='DQ'?'selected':''}>DQ</option><option ${rRes?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
-          }).join('')}
+    const participants = eventRegs(e);
+    const sortedByTime = [...participants].map(s => {
+      const res = rr.find(x => x.studentId === s.id);
+      return { s, time: res?.value ? parseFloat(res.value) : 999999, res };
+    }).sort((a,b) => a.time - b.time);
+    
+    const finalQualifiers = sortedByTime.slice(0, lanes).map(x => x.s);
+
+    openModal(`Keputusan · ${e.no} ${e.name}`, `<form id="judge-form"><div class="space-y-5">${heats.map(heat => {
+      const isFinalHeat = heat.heatName.toLowerCase().includes('akhir') && !heat.heatName.toLowerCase().includes('separuh');
+      
+      if (isFinalHeat && !isDirectFinal) {
+        return `
+          <div class="rounded-xl border border-amber-300 p-4 bg-amber-50/40">
+            <h4 class="font-extrabold text-amber-800 text-sm mb-3 uppercase tracking-wider">${heat.heatName} (Auto-Layak dari Siri)</h4>
+            <div class="space-y-3">
+              ${finalQualifiers.length > 0 && finalQualifiers[0] ? finalQualifiers.map((s, idx) => {
+                const fRes = rr.find(x => x.studentId === s.id && x.rank > 0);
+                return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${idx + 1}</span></div><div class="grid grid-cols-2 gap-2"><input data-final-value="${s.id}" type="text" class="field" placeholder="Masa Akhir" value="${fRes?.value || ''}"><select data-final-status="${s.id}" class="field"><option value="SAH">SAH</option><option value="DNS">DNS</option><option value="DQ">DQ</option><option value="RB">RB</option></select></div></div>`;
+              }).join('') : '<p class="text-xs text-slate-500 italic">Sila masukkan dan simpan masa Separuh Akhir terlebih dahulu supaya senarai Akhir dijana di sini.</p>'}
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+          <h4 class="font-extrabold text-[#146b8c] text-sm mb-3 uppercase tracking-wider">${heat.heatName}</h4>
+          <div class="space-y-3">
+            ${heat.rows.map(r => {
+              if(!r.studentId) return '';
+              const s = state.students.find(x => x.id === r.studentId);
+              const rRes = s ? rr.find(x => x.studentId === s.id) : null;
+              return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${r.lane}</span></div><div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="text" class="field" placeholder="Masa" value="${rRes?.value||''}"><select data-status="${s.id}" class="field"><option ${rRes?.status==='SAH'?'selected':''}>SAH</option><option ${rRes?.status==='DNS'?'selected':''}>DNS</option><option ${rRes?.status==='DQ'?'selected':''}>DQ</option><option ${rRes?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
+            }).join('')}
+          </div>
         </div>
-      </div>
-    `).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Selesaikan Keputusan</button></form>`);
+      `;
+    }).join('')}</div><button class="btn btn-primary mt-5 w-full" type="submit">Simpan & Selesaikan Keputusan</button></form>`);
     
     $('#judge-form').onsubmit = async ev => {
       ev.preventDefault();
       let participants = eventRegs(e);
+      
       let entries = participants.map(s => {
         const valInput = $(`[data-value="${s.id}"]`);
         const statusInput = $(`[data-status="${s.id}"]`);
-        const value = valInput ? valInput.value.trim() : '';
+        if(!valInput) return null;
+        const value = valInput.value.trim();
         const status = statusInput ? statusInput.value : 'SAH';
         return {s, value, status};
-      }).filter(x => x.value !== '' && x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
-      
-      entries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
+      }).filter(Boolean);
+
+      let finalEntries = finalQualifiers.map(s => {
+        if(!s) return null;
+        const valInput = $(`[data-final-value="${s.id}"]`);
+        const statusInput = $(`[data-final-status="${s.id}"]`);
+        if(!valInput) return null;
+        const value = valInput.value.trim();
+        const status = statusInput ? statusInput.value : 'SAH';
+        return {s, value, status};
+      }).filter(x => x && x.value !== '');
 
       state.results = state.results.filter(r => r.eventId !== eventId);
-      
-      if (!isDirectFinal && heats.length > 1 && !heats[0].heatName.includes('Akhir')) {
-        const topQualified = entries.slice(0, lanes).map(x => x.s.id);
-        if(!state.settings.laneDraws) state.settings.laneDraws = {};
-        state.settings.laneDraws[e.id] = topQualified;
-        toast(`Separuh akhir selesai! ${topQualified.length} peserta terpantas layak ke Peringkat Akhir secara automatik.`);
-      } else {
-        entries.forEach((x, i) => {
+
+      if (finalEntries.length > 0) {
+        finalEntries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
+        finalEntries.forEach((x, i) => {
           const rank = i + 1;
           const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
           const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
-          let status = x.status;
-          state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status, medal, points});
+          state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status: x.status, medal, points});
         });
         e.status = 'Selesai';
-        toast('Keputusan Peringkat Akhir berjaya disimpan!');
+        toast('Keputusan Peringkat Akhir Berjaya Disimpan!');
+      } else {
+        entries.sort((a, b) => parseFloat(a.value || 999) - parseFloat(b.value || 999));
+        const topQualified = entries.slice(0, lanes).map(x => x.s.id);
+        if(!state.settings.laneDraws) state.settings.laneDraws = {};
+        state.settings.laneDraws[e.id] = topQualified;
+        
+        entries.forEach(x => {
+          if(x.value !== '') {
+            state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank: 0, status: x.status, medal: '', points: 0});
+          }
+        });
+        toast('Masa Separuh Akhir disimpan! Senarai layak ke Akhir telah dijana di dalam borang.');
       }
 
       await saveTypes(['results', 'events', 'settings']);
