@@ -898,9 +898,9 @@ function judgePreview(e){
          ? (b.athletes?.[0] ? rr.find(x => x.studentId === b.athletes[0].id) : null)
          : (b.studentId ? rr.find(x => x.studentId === b.studentId) : null);
        
-       const valA = (resA && resA.value > 0 && resA.status !== 'DNS' && resA.status !== 'DQ') ? resA.value : 999999;
-       const valB = (resB && resB.value > 0 && resB.status !== 'DNS' && resB.status !== 'DQ') ? resB.value : 999999;
-       return valA - valB;
+       const rankA = (resA && resA.rank) ? Number(resA.rank) : 999;
+       const rankB = (resB && resB.rank) ? Number(resB.rank) : 999;
+       return rankA - rankB;
      });
 
      return `
@@ -941,6 +941,7 @@ function renderWinners(){
    .filter(r => r.rank >= 1 && r.rank <= 5)
    .sort((a,b)=>(state.events.find(e=>e.id===a.eventId)?.no||'').localeCompare(state.events.find(e=>e.id===b.eventId)?.no||'')||a.rank-b.rank);
  
+ `${pageHead('Senarai Pemenang','Semakan pingat dan kedudukan terbaik (Tempat 1 hingga 5).',action('Jana PDF Rasmi','printer','pdf-results','btn-primary'))}`;
  return `${pageHead('Senarai Pemenang','Semakan pingat dan kedudukan terbaik (Tempat 1 hingga 5).',action('Jana PDF Rasmi','printer','pdf-results','btn-primary'))}<section class="panel">${miniGrid(rows.map(r=>{
    const e=state.events.find(x=>x.id===r.eventId), s=state.students.find(x=>x.id===r.studentId);
    let medalText = r.medal;
@@ -1704,6 +1705,9 @@ function openJudge(eventId){
         return {s, value, status};
       }).filter(x => x.value !== '' && x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
       
+      // Susun automatik mengikut masa terpantas (nilai terendah) dahulu
+      entries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
+
       state.results = state.results.filter(r => r.eventId !== eventId);
       
       if (!isDirectFinal && heats.length > 1 && !heats[0].heatName.includes('Akhir')) {
@@ -1797,7 +1801,7 @@ function openJudge(eventId){
           return { s, attempts, value, status };
       }).filter(x => x.status !== 'DNS' && x.status !== 'DQ' && x.status !== 'Batal');
 
-      entries.sort((a, b) => b.value - b.value);
+      entries.sort((a, b) => b.value - a.value);
       state.results = state.results.filter(r => r.eventId !== eventId);
 
       entries.forEach((x, i) => {
