@@ -411,16 +411,13 @@ function getEventHeats(e) {
 
     if (participantIds.length > lanes) {
       const rr = state.results.filter(r => r.eventId === e.id && r.stage === 'heat');
-      const hasHeatResults = rr.some(x => x.value && x.value.trim() !== '');
       
-      let finalQualifiers = [];
-      if (hasHeatResults) {
-        const sortedByTime = [...regs].map(s => {
-          const res = rr.find(x => x.studentId === s.id);
-          return { s, time: res?.value ? parseFloat(res.value) : 999999 };
-        }).sort((a,b) => a.time - b.time);
-        finalQualifiers = sortedByTime.slice(0, lanes).map(x => x.s);
-      }
+      const sortedByTime = [...regs].map(s => {
+        const res = rr.find(x => x.studentId === s.id);
+        return { s, time: res?.value ? parseFloat(res.value) : 999999 };
+      }).sort((a,b) => a.time - b.time);
+      
+      const finalQualifiers = sortedByTime.slice(0, lanes).map(x => x.s);
 
       heats.push({
         heatName: 'Akhir',
@@ -1756,7 +1753,6 @@ function openJudge(eventId){
         return {s, value, status};
       }).filter(x => x && x.value !== '');
 
-      // 1. Hanya buang dan kemas kini keputusan peringkat saringan (heat) sahaja tanpa mengusik final event lain
       state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'heat');
 
       entries.forEach(x => {
@@ -1765,7 +1761,6 @@ function openJudge(eventId){
         }
       });
 
-      // 2. Jika ada data masa akhir dimasukkan, baru kemas kini peringkat final untuk acara ini sahaja
       if (finalEntries.length > 0) {
         state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
         finalEntries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
@@ -1776,7 +1771,7 @@ function openJudge(eventId){
           state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
         });
         e.status = 'Selesai';
-        toast('Keputusan Peringkat Akhir Berjaya Disimpan!');
+        toast('Keputusan Separuh Akhir & Peringkat Akhir Disimpan!');
       } else {
         entries.sort((a, b) => parseFloat(a.value || 999) - parseFloat(b.value || 999));
         const topQualified = entries.slice(0, lanes).map(x => x.s.id);
@@ -2317,10 +2312,19 @@ function loadCompetitionIntoState(){
    state.settings={...state.settings,activeCompetitionId:cid,activeYear:String(c.year),tournament:c.name};
    state.students=[];state.events=[];state.registrations=[];state.results=[];state.activities=[];state.recycleBin=[];
  }
- ['students','events','registrations','results'].forEach(type=>{
+ ['students','events','registrations'].forEach(type=>{
    const r=records.find(x=>x.type===type && x.competition_id===cid);
    if(r){try{state[type]=JSON.parse(r.data)}catch{state[type]=[]}}else state[type]=[];
  });
+ 
+ const resRec=records.find(x=>x.type==='results' && x.competition_id===cid);
+ if(resRec){
+   try{
+     let parsed = JSON.parse(resRec.data);
+     state.results = parsed.map(item => ({ ...item, stage: item.stage || 'final' }));
+   }catch{state.results=[]}
+ }else state.results=[];
+
  ['activities','recycleBin'].forEach(type=>{
    const r=records.find(x=>x.type===type && x.competition_id===cid);
    if(r){try{state[type]=JSON.parse(r.data)}catch{state[type]=[]}}else state[type]=[];
