@@ -219,24 +219,24 @@ function standingTable(rows) {
   return `<div class="table-wrap"><table class="data-table">
     <thead class="bg-slate-50">
       <tr>
-        <th class="w-16 text-center !py-4">KED.</th>
+        <th class="w-16 !text-center !py-4">KED.</th>
         <th class="!py-4">RUMAH SUKAN</th>
-        <th class="text-center bg-amber-50/50 text-amber-700 font-extrabold border-b-2 border-amber-300 !py-4">🥇 EMAS</th>
-        <th class="text-center text-slate-500 font-bold border-b-2 border-slate-300 !py-4">🥈 PERAK</th>
-        <th class="text-center text-orange-800 font-bold border-b-2 border-orange-300 !py-4">🥉 GANGSA</th>
-        <th class="text-center font-extrabold text-[#146b8c] border-b-2 border-sky-300 !py-4">MATA</th>
+        <th class="w-28 sm:w-32 !text-center bg-amber-50/50 text-amber-700 font-extrabold border-b-2 border-amber-300 !py-4">🥇 EMAS</th>
+        <th class="w-28 sm:w-32 !text-center text-slate-500 font-bold border-b-2 border-slate-300 !py-4">🥈 PERAK</th>
+        <th class="w-28 sm:w-32 !text-center text-orange-800 font-bold border-b-2 border-orange-300 !py-4">🥉 GANGSA</th>
+        <th class="w-28 sm:w-32 !text-center font-extrabold text-[#146b8c] border-b-2 border-sky-300 !py-4">MATA</th>
       </tr>
     </thead>
     <tbody>
       ${rows.map((r, i) => {
         const isChamp = i === 0 && (r.gold > 0 || r.points > 0);
         return `<tr class="${isChamp ? 'bg-amber-50/30' : ''}">
-          <td class="text-center font-black text-lg ${isChamp ? 'text-amber-500' : 'text-slate-400'}">${isChamp ? '<div class="flex items-center justify-center gap-1.5"><i data-lucide="trophy" class="h-5 w-5 fill-amber-100"></i>1</div>' : i + 1}</td>
+          <td class="!text-center font-black text-lg ${isChamp ? 'text-amber-500' : 'text-slate-400'}">${isChamp ? '<div class="flex items-center justify-center gap-1.5"><i data-lucide="trophy" class="h-5 w-5 fill-amber-100"></i>1</div>' : i + 1}</td>
           <td class="font-bold !py-4"><span class="badge px-3 py-1.5 text-sm shadow-sm border" style="border-color:${houseStyle[r.house]?.[0] || '#475569'}40;color:${houseStyle[r.house]?.[0] || '#475569'};background:${houseStyle[r.house]?.[1] || '#f1f5f9'}">${r.house}</span></td>
-          <td class="text-center bg-amber-50/20"><span class="font-black text-amber-500 text-xl">${r.gold}</span></td>
-          <td class="text-center"><span class="font-bold text-slate-400 text-xl">${r.silver}</span></td>
-          <td class="text-center"><span class="font-bold text-orange-700/80 text-xl">${r.bronze}</span></td>
-          <td class="text-center"><span class="font-black text-[#10243e] text-xl">${r.points}</span></td>
+          <td class="!text-center bg-amber-50/20"><span class="font-black text-amber-500 text-xl">${r.gold}</span></td>
+          <td class="!text-center"><span class="font-bold text-slate-400 text-xl">${r.silver}</span></td>
+          <td class="!text-center"><span class="font-bold text-orange-700/80 text-xl">${r.bronze}</span></td>
+          <td class="!text-center"><span class="font-black text-[#10243e] text-xl">${r.points}</span></td>
         </tr>`;
       }).join('')}
     </tbody>
