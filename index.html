@@ -965,34 +965,46 @@ function renderWinners(){
 function renderStandings(){
  const c=calc();
  const studentMedals = state.students.map(s => {
-   const rr = state.results.filter(x => x.studentId === s.id && x.stage === 'final');
-   const individualResults = rr.filter(x => {
-     const ev = state.events.find(e => e.id === x.eventId);
-     return ev && ev.type !== 'Relay';
-   });
-   const relayResults = rr.filter(x => {
-     const ev = state.events.find(e => e.id === x.eventId);
-     return ev && ev.type === 'Relay';
+   // 1. Asingkan keputusan Individu (Bukan Relay)
+   const indResults = state.results.filter(x => x.studentId === s.id && x.stage === 'final' && state.events.find(e => e.id === x.eventId)?.type !== 'Relay');
+   
+   let teamGold = 0, teamSilver = 0, teamBronze = 0, teamPoints = 0;
+   
+   // 2. Cari acara Relay yang pelajar ini berdaftar
+   const relayRegs = state.registrations.filter(r => r.studentId === s.id && state.events.find(e => e.id === r.eventId)?.type === 'Relay');
+   
+   // 3. Semak jika Rumah Sukan pelajar ini memenangi acara Relay tersebut (kredit kepada semua pelari)
+   relayRegs.forEach(reg => {
+     const houseResult = state.results.find(res => {
+        if(res.eventId !== reg.eventId || res.stage !== 'final') return false;
+        const repStudent = state.students.find(x => x.id === res.studentId);
+        return repStudent && repStudent.house === s.house;
+     });
+     
+     if(houseResult) {
+        if(houseResult.medal === 'Emas') teamGold++;
+        if(houseResult.medal === 'Perak') teamSilver++;
+        if(houseResult.medal === 'Gangsa') teamBronze++;
+        teamPoints += (+houseResult.points || 0);
+     }
    });
 
-   const indGold = individualResults.filter(x => x.medal === 'Emas').length;
-   const indSilver = individualResults.filter(x => x.medal === 'Perak').length;
-   const indBronze = individualResults.filter(x => x.medal === 'Gangsa').length;
-
-   const teamGold = relayResults.filter(x => x.medal === 'Emas').length;
-   const teamSilver = relayResults.filter(x => x.medal === 'Perak').length;
-   const teamBronze = relayResults.filter(x => x.medal === 'Gangsa').length;
+   const indGold = indResults.filter(x => x.medal === 'Emas').length;
+   const indSilver = indResults.filter(x => x.medal === 'Perak').length;
+   const indBronze = indResults.filter(x => x.medal === 'Gangsa').length;
 
    const totalGold = indGold + teamGold;
    const totalSilver = indSilver + teamSilver;
    const totalBronze = indBronze + teamBronze;
+   // Mata individu + mata sumbangan kumpulan
+   const points = indResults.reduce((a, r) => a + (+r.points || 0), 0) + teamPoints;
 
    return {
      s,
      indGold, indSilver, indBronze,
      teamGold, teamSilver, teamBronze,
      totalGold, totalSilver, totalBronze,
-     points: rr.reduce((a, r) => a + (+r.points || 0), 0)
+     points
    };
  });
 
@@ -1031,21 +1043,15 @@ function renderStandings(){
  };
 
  return `${pageHead('Kedudukan Pingat','Susunan: Emas, Perak, Gangsa, kemudian jumlah mata.',action('Cetak Kedudukan','printer','pdf-standings','btn-primary'))}
- <div class="grid gap-6 xl:grid-cols-2">
-  <section class="panel overflow-hidden"><h3 class="p-5 font-extrabold">Rumah Sukan</h3>${standingTable(c.standing)}</section>
-  <section class="panel overflow-hidden"><h3 class="p-5 font-extrabold">Penyumbang Pingat Individu</h3>
-    ${miniGrid(studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0).sort((a,b)=>b.totalGold-a.totalGold||b.totalSilver-a.totalSilver).map(x=>[
-      x.s.bib,
-      x.s.name,
-      x.s.className,
-      `<span class="font-bold text-amber-500">${x.indGold}</span> + ${x.teamGold}`,
-      `<span class="font-bold text-slate-400">${x.indSilver}</span> + ${x.teamSilver}`,
-      `<span class="font-bold text-amber-700">${x.indBronze}</span> + ${x.teamBronze}`
-    ]),['Bib','Atlet','Kelas','Emas (Ind+Kump)','Perak (Ind+Kump)','Gangsa (Ind+Kump)'])}
-  </section>
- </div>
+ 
+ <!-- Bahagian Atas: Kedudukan Pingat Rumah -->
+ <section class="panel mb-6 overflow-hidden">
+  <h3 class="p-5 font-extrabold text-[#10243e] border-b border-slate-100">Kedudukan Pingat Rumah Sukan</h3>
+  ${standingTable(c.standing)}
+ </section>
 
- <section class="panel mt-6 p-5">
+ <!-- Bahagian Tengah: Olahragawan / Olahragawati -->
+ <section class="panel mb-6 p-5">
   <h3 class="mb-4 font-extrabold text-lg text-[#10243e]">Anugerah Olahragawan & Olahragawati Cemerlang</h3>
   <div class="grid gap-4 md:grid-cols-2">
     <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-5">
@@ -1055,14 +1061,14 @@ function renderStandings(){
           <p class="text-xs text-white/60 font-semibold">Olahragawan Harapan (B9)</p>
           <p class="mt-1 text-lg font-extrabold">${champs.l9 ? esc(champs.l9.s.name) : 'Belum ditentukan'}</p>
           <p class="text-xs text-[#e4aa36] mt-1">
-            ${champs.l9 ? `Individu: ${champs.l9.indGold}G ${champs.l9.indSilver}S ${champs.l9.indBronze}B | Kumpulan: ${champs.l9.teamGold}G ${champs.l9.teamSilver}S` : 'Tiada rekod pingat'}
+            ${champs.l9 ? `Individu: ${champs.l9.indGold}G ${champs.l9.indSilver}S ${champs.l9.indBronze}B | Kumpulan: ${champs.l9.teamGold}G ${champs.l9.teamSilver}S ${champs.l9.teamBronze}B` : 'Tiada rekod pingat'}
           </p>
         </div>
         <div class="rounded-xl bg-[#09243b] p-4 text-white">
           <p class="text-xs text-white/60 font-semibold">Olahragawati Harapan (B9)</p>
           <p class="mt-1 text-lg font-extrabold">${champs.p9 ? esc(champs.p9.s.name) : 'Belum ditentukan'}</p>
           <p class="text-xs text-[#e4aa36] mt-1">
-            ${champs.p9 ? `Individu: ${champs.p9.indGold}G ${champs.p9.indSilver}S ${champs.p9.indBronze}B | Kumpulan: ${champs.p9.teamGold}G ${champs.p9.teamSilver}S` : 'Tiada rekod pingat'}
+            ${champs.p9 ? `Individu: ${champs.p9.indGold}G ${champs.p9.indSilver}S ${champs.p9.indBronze}B | Kumpulan: ${champs.p9.teamGold}G ${champs.p9.teamSilver}S ${champs.p9.teamBronze}B` : 'Tiada rekod pingat'}
           </p>
         </div>
       </div>
@@ -1075,19 +1081,32 @@ function renderStandings(){
           <p class="text-xs text-white/60 font-semibold">Olahragawan Cemerlang (B12)</p>
           <p class="mt-1 text-lg font-extrabold">${champs.l12 ? esc(champs.l12.s.name) : 'Belum ditentukan'}</p>
           <p class="text-xs text-[#e4aa36] mt-1">
-            ${champs.l12 ? `Individu: ${champs.l12.indGold}G ${champs.l12.indSilver}S ${champs.l12.indBronze}B | Kumpulan: ${champs.l12.teamGold}G ${champs.l12.teamSilver}S` : 'Tiada rekod pingat'}
+            ${champs.l12 ? `Individu: ${champs.l12.indGold}G ${champs.l12.indSilver}S ${champs.l12.indBronze}B | Kumpulan: ${champs.l12.teamGold}G ${champs.l12.teamSilver}S ${champs.l12.teamBronze}B` : 'Tiada rekod pingat'}
           </p>
         </div>
         <div class="rounded-xl bg-[#09243b] p-4 text-white">
           <p class="text-xs text-white/60 font-semibold">Olahragawati Cemerlang (B12)</p>
           <p class="mt-1 text-lg font-extrabold">${champs.p12 ? esc(champs.p12.s.name) : 'Belum ditentukan'}</p>
           <p class="text-xs text-[#e4aa36] mt-1">
-            ${champs.p12 ? `Individu: ${champs.p12.indGold}G ${champs.p12.indSilver}S ${champs.p12.indBronze}B | Kumpulan: ${champs.p12.teamGold}G ${champs.p12.teamSilver}S` : 'Tiada rekod pingat'}
+            ${champs.p12 ? `Individu: ${champs.p12.indGold}G ${champs.p12.indSilver}S ${champs.p12.indBronze}B | Kumpulan: ${champs.p12.teamGold}G ${champs.p12.teamSilver}S ${champs.p12.teamBronze}B` : 'Tiada rekod pingat'}
           </p>
         </div>
       </div>
     </div>
   </div>
+ </section>
+
+ <!-- Bahagian Bawah: Penyumbang Pingat Individu & Kumpulan -->
+ <section class="panel overflow-hidden">
+  <h3 class="p-5 font-extrabold text-[#10243e] border-b border-slate-100">Senarai Penyumbang Pingat Individu & Kumpulan</h3>
+  ${miniGrid(studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0).sort((a,b)=>b.totalGold-a.totalGold||b.totalSilver-a.totalSilver).map(x=>[
+    x.s.bib,
+    x.s.name,
+    x.s.className,
+    `<span class="font-bold text-amber-500">${x.indGold}</span> + ${x.teamGold}`,
+    `<span class="font-bold text-slate-400">${x.indSilver}</span> + ${x.teamSilver}`,
+    `<span class="font-bold text-amber-700">${x.indBronze}</span> + ${x.teamBronze}`
+  ]),['Bib','Atlet','Kelas','Emas (Ind+Kump)','Perak (Ind+Kump)','Gangsa (Ind+Kump)'])}
  </section>`;
 }
 function renderRecords(){
