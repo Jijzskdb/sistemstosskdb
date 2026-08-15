@@ -125,6 +125,7 @@ const defaultData={
     activeCompetitionId:'KJ-2026-001',
     headmasterName:'En. Guru Besar Bin Pengetua',
     headmasterSign:null,
+    organizer:'UNIT KOKURIKULUM',
     years:[],
     crossPoints:[10,9,8,7,6,5,4,3,2,1],
     historicalRecords:[],
@@ -219,7 +220,7 @@ function renderDashboard(){
  ${[['Murid',total,'users'],['Atlet Aktif',c.active.size,'person-standing'],['Jumlah Acara',state.events.length,'trophy'],['Acara Selesai',completed,'check-circle'],['Rekod Baharu',state.results.filter(r=>r.status==='RB').length,'sparkles'],['Rumah Mendahului',c.standing[0]?.house||'-','flag']].map((x,i)=>`<article class="panel p-5"><div class="mb-4 flex h-10 w-10 items-center justify-center rounded-xl ${i===4?'bg-amber-100 text-amber-700':'bg-cyan-50 text-cyan-700'}"><i data-lucide="${x[2]}"></i></div><p class="text-2xl font-extrabold">${esc(x[1])}</p><p class="text-sm text-slate-500">${x[0]}</p></article>`).join('')}
  </div>
  <div class="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
-  <section class="panel overflow-hidden"><div class="flex items-center justify-between p-5"><h3 class="font-extrabold">Kedudukan Pingat Rumah</h3>${actionAlways('Lihat Penuh','arrow-right','go-standings')}</div>${standingTable(c.standing)}</section>
+  <section class="panel overflow-hidden"><div class="flex items-center justify-between p-5"><h3 class="font-extrabold">Kedudukan Pingat Rumah Sukan</h3>${actionAlways('Lihat Penuh','arrow-right','go-standings')}</div>${standingTable(c.standing)}</section>
   <section class="panel p-5"><h3 class="mb-4 font-extrabold">Akses Pantas</h3><div class="grid gap-2">${(currentUserRole === 'ADMIN' ? [['Tambah Murid','user-plus','add-student']] : []).concat([['Daftar Atlet','clipboard-plus','go-registration'],['Masukkan Keputusan','clipboard-check','go-judges'],['Cetak Start List','printer','pdf-start'],['Buka Analisis','pie-chart','go-analysis']]).map(x=>actionAlways(x[0],x[1],x[2],'btn-soft w-full !justify-start')).join('')}</div></section>
  </div>
  <section class="panel mt-6 p-5"><h3 class="mb-4 font-extrabold">Aktiviti Terkini</h3><div class="grid gap-3 md:grid-cols-2">${state.activities.slice(0,4).map((a,i)=>`<div class="flex gap-3 rounded-xl bg-slate-50 p-3"><span class="mt-1 h-2.5 w-2.5 rounded-full ${i===1?'bg-amber-400':'bg-cyan-500'}"></span><div><p class="font-semibold">${esc(a)}</p><p class="text-xs text-slate-400">${i+1} jam lalu</p></div></div>`).join('')}</div></section>`;
@@ -248,7 +249,7 @@ function standingTable(rows) {
           <td class="!text-center"><span class="font-black text-[#10243e] text-xl">${r.points}</span></td>
         </tr>`;
       }).join('')}
-    </tbody>
+    <tbody>
   </table></div>`;
 }
 function renderStudents(){
@@ -342,14 +343,14 @@ function renderStudents(){
 }
 function renderEvents(){
  const topActions = currentUserRole === 'ADMIN'
-   ? action('Tambah Acara', 'plus', 'add-event', 'btn-primary') + action('Import Excel', 'upload', 'import-events') + actionAlways('Jana PDF', 'printer', 'pdf-events') + actionAlways('Export Excel', 'download', 'export-events')
-   : actionAlways('Jana PDF', 'printer', 'pdf-events', 'btn-primary') + actionAlways('Export Excel', 'download', 'export-events');
+    ? action('Tambah Acara', 'plus', 'add-event', 'btn-primary') + action('Import Excel', 'upload', 'import-events') + actionAlways('Jana PDF', 'printer', 'pdf-events') + actionAlways('Export Excel', 'download', 'export-events')
+    : actionAlways('Jana PDF', 'printer', 'pdf-events', 'btn-primary') + actionAlways('Export Excel', 'download', 'export-events');
 
  return `${pageHead('Master Acara','Katalog acara balapan, padang, relay dan merentas desa.', topActions)}
  <input id="event-file-import" type="file" accept=".csv,.xlsx,.xls" class="hidden">
  <section class="panel overflow-hidden"><div class="table-wrap"><table class="data-table"><thead><tr><th>No.</th><th>Nama Acara</th><th>Kategori</th><th>Jenis</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${state.events.map(e=>{
-   const rowActions = currentUserRole === 'ADMIN' ? `<div class="flex gap-1">${action('Edit','pencil','edit-event')} ${action(pendingDelete===e.id?'Sahkan':'Arkib','archive','delete-event','btn-danger')}</div>` : '<span class="text-slate-400 text-xs">Mod Baca Sahaja</span>';
-   return `<tr><td class="font-extrabold">${e.no}</td><td class="font-bold">${e.name}</td><td>${e.category}</td><td><span class="badge bg-sky-50 text-sky-700">${e.type}</span></td><td>${e.status}</td><td>${rowActions}<span class="hidden row-id">${e.id}</span></td></tr>`;
+    const rowActions = currentUserRole === 'ADMIN' ? `<div class="flex gap-1">${action('Edit','pencil','edit-event')} ${action(pendingDelete===e.id?'Sahkan':'Arkib','archive','delete-event','btn-danger')}</div>` : '<span class="text-slate-400 text-xs">Mod Baca Sahaja</span>';
+    return `<tr><td class="font-extrabold">${e.no}</td><td class="font-bold">${e.name}</td><td>${e.category}</td><td><span class="badge bg-sky-50 text-sky-700">${e.type}</span></td><td>${e.status}</td><td>${rowActions}<span class="hidden row-id">${e.id}</span></td></tr>`;
  }).join('')}</tbody></table></div></section>`;
 }
 function eventRegs(e){return state.registrations.filter(r=>r.eventId===e.id).map(r=>state.students.find(s=>s.id===r.studentId)).filter(Boolean)}
@@ -1254,6 +1255,7 @@ function printParticipationCertificates(){
   const tournamentName = escPrint(state.settings.tournament);
   const year = escPrint(state.settings.activeYear);
   const gb = escPrint(state.settings.headmasterName || 'Guru Besar');
+  const organizer = escPrint(state.settings.organizer || 'UNIT KOKURIKULUM');
   const signSrc = state.settings.headmasterSign || '';
   const logoSrc = state.settings.logo || '';
 
@@ -1272,7 +1274,7 @@ function printParticipationCertificates(){
           <div class="sign-box">
             ${signSrc ? `<img src="${signSrc}" class="sign-img">` : '<div style="height:35px"></div>'}
             <div class="sign-line"></div>
-            <b>${gb}</b><br>Guru Besar
+            <b>${gb}</b><br>Guru Besar<br>${schoolName.toUpperCase()}
           </div>
         </div>
       </div>
@@ -1319,6 +1321,7 @@ function printAchievementCertificates(){
   const tournamentName = escPrint(state.settings.tournament);
   const year = escPrint(state.settings.activeYear);
   const gb = escPrint(state.settings.headmasterName || 'Guru Besar');
+  const organizer = escPrint(state.settings.organizer || 'UNIT KOKURIKULUM');
   const signSrc = state.settings.headmasterSign || '';
   const logoSrc = state.settings.logo || '';
 
@@ -1327,27 +1330,36 @@ function printAchievementCertificates(){
     const e = state.events.find(x => x.id === res.eventId);
     if(!s || !e) return '';
 
-    let rankText = `Tempat Ke-${res.rank}`;
-    if(res.rank === 1) rankText = 'JOHAN (PINGAT EMAS)';
-    else if(res.rank === 2) rankText = 'NAIB JOHAN (PINGAT PERAK)';
-    else if(res.rank === 3) rankText = 'TEMPAT KETIGA (PINGAT GANGSA)';
+    let rankText = (res.rank === 1) ? 'JOHAN' : (res.rank === 2) ? 'NAIB JOHAN' : 'TEMPAT KETIGA';
 
     return `
       <div class="cert-page">
-        <div class="cert-border" style="border-color: #d99b20;">
+        <div class="cert-border">
           ${logoSrc ? `<img src="${logoSrc}" class="cert-logo">` : ''}
           <h3 class="cert-school">${schoolName}</h3>
-          <h1 class="cert-title" style="color: #d99b20;">SIJIL PENCAPAIAN</h1>
-          <p class="cert-subtitle">Dengan bangganya dianugerahkan kepada</p>
+          <h1 class="cert-title">Sijil Pencapaian</h1>
+          <p class="cert-subtitle">Dengan ini diperakui bahawa</p>
           <h2 class="cert-name">${escPrint(s.name)}</h2>
-          <p class="cert-meta">No. Bib: <b>${escPrint(s.bib)}</b> &nbsp;|&nbsp; Kelas: <b>${escPrint(s.className)}</b> &nbsp;|&nbsp; Rumah Sukan: <b>${escPrint(s.house)}</b></p>
-          <p class="cert-body">atas kejayaan merangkul <b>${rankText}</b> dalam acara <b>${escPrint(e.name)} (${escPrint(e.category)})</b> sempena <b>${tournamentName}</b> Tahun <b>${year}</b>.</p>
+          <p class="cert-meta">${schoolName}</p>
+          
+          <p style="margin: 8px 0; font-size: 15px;">telah memenangi tempat</p>
+          <div style="font-size: 22px; font-weight: bold; color: #b45309; margin: 4px 0;">(${rankText})</div>
+          
+          <div style="font-size: 16px; font-weight: bold; margin: 8px 0; color: #09243b;">${tournamentName}</div>
+          
+          <div style="font-size: 14px; margin: 4px 0;">Kategori: <b>${escPrint(e.category)}</b></div>
+          <div style="font-size: 14px; margin: 4px 0;">Acara: <b>${escPrint(e.name)}</b></div>
+          <div style="font-size: 14px; margin: 4px 0;">Tarikh: <b>08 – 09 MEI ${year}</b></div>
+          <div style="font-size: 14px; margin: 4px 0;">Tempat: <b>${schoolName}</b></div>
+          <div style="font-size: 14px; margin: 4px 0;">Pengelola: <b>${organizer} ${schoolName.toUpperCase()}</b></div>
+          
+          <p style="margin-top: 10px; font-style: italic; font-size: 14px;">Syabas dan tahniah atas kejayaan</p>
           
           <div class="cert-sign-container">
             <div class="sign-box">
               ${signSrc ? `<img src="${signSrc}" class="sign-img">` : '<div style="height:35px"></div>'}
               <div class="sign-line"></div>
-              <b>${gb}</b><br>Guru Besar
+              <b>${gb}</b><br>GURU BESAR<br>${schoolName.toUpperCase()}
             </div>
           </div>
         </div>
@@ -1359,18 +1371,17 @@ function printAchievementCertificates(){
     @page{size:A4 landscape;margin:0}
     body{margin:0;font-family:'Times New Roman',serif;color:#111}
     .cert-page{width:297mm;height:210mm;padding:15mm;box-sizing:border-box;page-break-after:always;display:flex;align-items:center;justify-content:center}
-    .cert-border{width:100%;height:100%;border:8px double #d99b20;padding:30px;box-sizing:border-box;text-align:center;position:relative;background:#fffdf9;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
-    .cert-logo{width:70px;height:70px;object-fit:cover;border-radius:50%;margin-bottom:5px}
-    .cert-school{font-size:16px;text-transform:uppercase;letter-spacing:2px;margin:0;color:#09243b}
-    .cert-title{font-size:36px;font-weight:bold;margin:10px 0;letter-spacing:3px;font-family:'Arial',sans-serif}
-    .cert-subtitle{font-size:16px;font-style:italic;margin:0 0 10px;color:#555}
-    .cert-name{font-size:32px;font-weight:bold;margin:10px 0;border-bottom:2px solid #146b8c;display:inline-block;padding-bottom:5px;color:#10243e;font-family:'Arial',sans-serif}
-    .cert-meta{font-size:15px;margin:10px 0;color:#444}
-    .cert-body{font-size:16px;max-width:750px;line-height:1.6;margin:10px auto;color:#333}
-    .cert-sign-container{width:100%;display:flex;justify-content:flex-end;padding:0 60px;box-sizing:border-box;margin-top:10px}
-    .sign-box{text-align:center;font-size:13px;color:#222;width:240px;position:relative}
-    .sign-img{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);max-height:50px;max-width:160px;object-fit:contain}
-    .sign-line{border-top:1px solid #333;margin-top:35px;margin-bottom:6px}
+    .cert-border{width:100%;height:100%;border:8px double #000;padding:25px;box-sizing:border-box;text-align:center;position:relative;background:#fffdf9;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+    .cert-logo{width:70px;height:70px;object-fit:cover;border-radius:50%;margin-bottom:2px}
+    .cert-school{font-size:15px;text-transform:uppercase;letter-spacing:2px;margin:0;color:#09243b}
+    .cert-title{font-size:32px;font-weight:bold;margin:6px 0;letter-spacing:2px;font-family:'Arial',sans-serif;color:#000}
+    .cert-subtitle{font-size:15px;margin:0;color:#333}
+    .cert-name{font-size:26px;font-weight:bold;margin:6px 0;border-bottom:1px solid #000;display:inline-block;padding-bottom:3px;color:#10243e;font-family:'Arial',sans-serif}
+    .cert-meta{font-size:14px;margin:2px 0;color:#444}
+    .cert-sign-container{width:100%;display:flex;justify-content:flex-end;padding:0 50px;box-sizing:border-box;margin-top:5px}
+    .sign-box{text-align:center;font-size:12px;color:#222;width:240px;position:relative}
+    .sign-img{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);max-height:45px;max-width:150px;object-fit:contain}
+    .sign-line{border-top:1px solid #000;margin-top:30px;margin-bottom:4px}
   </style></head><body>${pagesHTML}</body></html>`);
   popup.document.close();
   setTimeout(() => { popup.focus(); popup.print(); }, 500);
@@ -1411,9 +1422,9 @@ function renderSettings(){
    <table class="data-table">
     <thead><tr><th>ID</th><th>Kejohanan</th><th>Tahun</th><th>Status</th></tr></thead>
     <tbody>
-     ${(state.competitions||[]).map(c=>`<tr class="${c.id===state.settings.activeCompetitionId?'bg-amber-50':''}">
+      ${(state.competitions||[]).map(c=>`<tr class="${c.id===state.settings.activeCompetitionId?'bg-amber-50':''}">
      <td class="font-mono text-xs">${esc(c.id)}</td><td class="font-semibold">${esc(c.name)}</td><td>${esc(c.year)}</td><td><span class="badge">${esc(c.status||'Aktif')}</span></td>
-     </tr>`).join('')}
+      </tr>`).join('')}
     </tbody>
    </table>
   </div>
@@ -1424,6 +1435,7 @@ function renderSettings(){
   <label><span class="mb-1 block font-bold">Nama Kejohanan</span><input id="setting-tournament" class="field" value="${esc(state.settings.tournament)}"></label>
   <label><span class="mb-1 block font-bold">Tahun Aktif</span><input id="setting-year" type="number" min="2020" max="2099" class="field" value="${state.settings.activeYear}"></label>
   <label><span class="mb-1 block font-bold">Nama Guru Besar (Pengelola Rasmi)</span><input id="setting-headmaster" class="field" value="${esc(state.settings.headmasterName || '')}"></label>
+  <label><span class="mb-1 block font-bold">Pengelola Kejohanan (Contoh: UNIT KOKURIKULUM)</span><input id="setting-organizer" class="field" value="${esc(state.settings.organizer || 'UNIT KOKURIKULUM')}"></label>
  </div></section>
  
  <section class="panel p-6"><h3 class="mb-5 font-extrabold">Had Syarat & Spesifikasi Lorong</h3>
@@ -2497,6 +2509,7 @@ async function saveSettings(){
  state.settings.school=$('#setting-school').value.trim();
  state.settings.tournament=$('#setting-tournament').value.trim();
  state.settings.headmasterName=$('#setting-headmaster').value.trim();
+ state.settings.organizer=$('#setting-organizer').value.trim();
  state.settings.crossPoints=points.length===10?points:[10,9,8,7,6,5,4,3,2,1];
  state.settings.maxIndividualEvents = isNaN(maxIndVal) ? 2 : maxIndVal;
  state.settings.maxRelayEvents = isNaN(maxRelayVal) ? 2 : maxRelayVal;
@@ -2760,14 +2773,14 @@ async function initAfterLogin(){
  iconRefresh();
 
  setInterval(async () => {
-   if (!busy && GOOGLE_ID_TOKEN) {
-     try {
-       const freshData = await apiGet();
-       applyRemoteRecords(freshData);
-     } catch (err) {
-       console.error('Auto-sync background ralat:', err);
-     }
-   }
+    if (!busy && GOOGLE_ID_TOKEN) {
+      try {
+        const freshData = await apiGet();
+        applyRemoteRecords(freshData);
+      } catch (err) {
+        console.error('Auto-sync background ralat:', err);
+      }
+    }
  }, 30000);
 
  const bannerEl = $('#dashboard-banner');
@@ -2815,5 +2828,5 @@ $('#year-select').onchange=e=>{
 };
 if (GOOGLE_ID_TOKEN) { initAfterLogin(); } else { renderGoogleLogin(); }
 </script>
-  </body>
+ </body>
 </html>
