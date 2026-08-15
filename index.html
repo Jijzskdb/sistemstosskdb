@@ -126,6 +126,7 @@ const defaultData={
     headmasterName:'En. Guru Besar Bin Pengetua',
     headmasterSign:null,
     organizer:'UNIT KOKURIKULUM',
+    tournamentDate:'08 – 09 MEI',
     years:[],
     crossPoints:[10,9,8,7,6,5,4,3,2,1],
     historicalRecords:[],
@@ -1258,6 +1259,7 @@ function printParticipationCertificates(){
   const organizer = escPrint(state.settings.organizer || 'UNIT KOKURIKULUM');
   const signSrc = state.settings.headmasterSign || '';
   const logoSrc = state.settings.logo || '';
+  const tournamentDate = escPrint(state.settings.tournamentDate || '08 – 09 MEI');
 
   const pagesHTML = studentsToPrint.map(s => `
     <div class="cert-page">
@@ -1268,7 +1270,7 @@ function printParticipationCertificates(){
         <p class="cert-subtitle">Dengan ini disahkan bahawa</p>
         <h2 class="cert-name">${escPrint(s.name)}</h2>
         <p class="cert-meta">No. Bib: <b>${escPrint(s.bib)}</b> &nbsp;|&nbsp; Kelas: <b>${escPrint(s.className)}</b> &nbsp;|&nbsp; Rumah Sukan: <b>${escPrint(s.house)}</b></p>
-        <p class="cert-body">telah rasmi mengambil bahagian dengan jayanya dalam <b>${tournamentName}</b> bagi Tahun <b>${year}</b>.</p>
+        <p class="cert-body">telah rasmi mengambil bahagian dengan jayanya dalam <b>${tournamentName}</b> pada <b>${tournamentDate} ${year}</b>.</p>
         
         <div class="cert-sign-container">
           <div class="sign-box">
@@ -1327,6 +1329,7 @@ function printAchievementCertificates(){
   const organizer = escPrint(state.settings.organizer || 'UNIT KOKURIKULUM');
   const signSrc = state.settings.headmasterSign || '';
   const logoSrc = state.settings.logo || '';
+  const tournamentDate = escPrint(state.settings.tournamentDate || '08 – 09 MEI');
 
   const pagesHTML = resultsToPrint.map(res => {
     const s = state.students.find(x => x.id === res.studentId);
@@ -1352,7 +1355,7 @@ function printAchievementCertificates(){
           <div class="cert-details">
             <div style="font-size: 15px; margin: 6px 0;">Kategori: <b>${escPrint(e.category)}</b></div>
             <div style="font-size: 15px; margin: 6px 0;">Acara: <b>${escPrint(e.name)}</b></div>
-            <div style="font-size: 15px; margin: 6px 0;">Tarikh: <b>08 – 09 MEI ${year}</b></div>
+            <div style="font-size: 15px; margin: 6px 0;">Tarikh: <b>${tournamentDate} ${year}</b></div>
             <div style="font-size: 15px; margin: 6px 0;">Tempat: <b>${schoolName}</b></div>
             <div style="font-size: 15px; margin: 6px 0;">Pengelola: <b>${organizer} ${schoolName.toUpperCase()}</b></div>
           </div>
@@ -1413,6 +1416,8 @@ function renderSettings(){
   const maxTrackLanes = state.settings.maxTrackLanes ?? 6;
   const maxLongTrackLanes = state.settings.maxLongTrackLanes ?? 3;
   const maxRelayLanes = state.settings.maxRelayLanes ?? 3;
+  const tournamentDate = state.settings.tournamentDate || '08 – 09 MEI';
+
   return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif, had syarat acara & bilangan lorong.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
  <section class="panel p-6 xl:col-span-2">
@@ -1441,6 +1446,7 @@ function renderSettings(){
  <section class="panel p-6"><h3 class="mb-5 font-extrabold">Sekolah & Kejohanan</h3><div class="space-y-4">
   <label><span class="mb-1 block font-bold">Nama Sekolah</span><input id="setting-school" class="field" value="${esc(state.settings.school)}"></label>
   <label><span class="mb-1 block font-bold">Nama Kejohanan</span><input id="setting-tournament" class="field" value="${esc(state.settings.tournament)}"></label>
+  <label><span class="mb-1 block font-bold">Tarikh Kejohanan (Cth: 08 – 09 MEI)</span><input id="setting-tournament-date" class="field" value="${esc(tournamentDate)}"></label>
   <label><span class="mb-1 block font-bold">Tahun Aktif</span><input id="setting-year" type="number" min="2020" max="2099" class="field" value="${state.settings.activeYear}"></label>
   <label><span class="mb-1 block font-bold">Nama Guru Besar (Pengelola Rasmi)</span><input id="setting-headmaster" class="field" value="${esc(state.settings.headmasterName || '')}"></label>
   <label><span class="mb-1 block font-bold">Pengelola Kejohanan (Contoh: UNIT KOKURIKULUM)</span><input id="setting-organizer" class="field" value="${esc(state.settings.organizer || 'UNIT KOKURIKULUM')}"></label>
@@ -2516,6 +2522,7 @@ async function saveSettings(){
 
  state.settings.school=$('#setting-school').value.trim();
  state.settings.tournament=$('#setting-tournament').value.trim();
+ state.settings.tournamentDate=$('#setting-tournament-date').value.trim();
  state.settings.headmasterName=$('#setting-headmaster').value.trim();
  state.settings.organizer=$('#setting-organizer').value.trim();
  state.settings.crossPoints=points.length===10?points:[10,9,8,7,6,5,4,3,2,1];
