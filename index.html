@@ -921,8 +921,8 @@ function renderRegistration(){
 function renderJudges(){
  return `${pageHead('Borang Hakim','Masukkan masa, jarak, enam percubaan atau keputusan.',actionAlways('Cetak Keputusan','file-check','pdf-results','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>{
-   const judgeBtn = (currentUserRole === 'ADMIN' || currentUserRole === 'HAKIM') ? `<button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button>` : '';
-   return `<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type}</p></div><div class="flex flex-wrap gap-2">${judgeBtn}<button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`;
+    const judgeBtn = (currentUserRole === 'ADMIN' || currentUserRole === 'HAKIM') ? `<button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button>` : '';
+    return `<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type}</p></div><div class="flex flex-wrap gap-2">${judgeBtn}<button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`;
  }).join('')}</div>`;
 }
 
@@ -1340,7 +1340,6 @@ function printAchievementCertificates(){
           <h1 class="cert-title">Sijil Pencapaian</h1>
           <p class="cert-subtitle">Dengan ini diperakui bahawa</p>
           <h2 class="cert-name">${escPrint(s.name)}</h2>
-          <p class="cert-meta">${schoolName}</p>
           
           <p style="margin: 15px 0 8px; font-size: 16px;">telah memenangi tempat</p>
           <div style="font-size: 26px; font-weight: bold; color: #b45309; margin: 8px 0;">(${rankText})</div>
@@ -1359,7 +1358,9 @@ function printAchievementCertificates(){
           
           <div class="cert-sign-container">
             <div class="sign-box">
-              ${signSrc ? `<img src="${signSrc}" class="sign-img">` : '<div style="height:35px"></div>'}
+              <div class="sign-img-wrapper">
+                ${signSrc ? `<img src="${signSrc}" class="sign-img">` : ''}
+              </div>
               <div class="sign-line"></div>
               <b>${gb}</b><br>GURU BESAR<br>${schoolName.toUpperCase()}
             </div>
@@ -1379,12 +1380,14 @@ function printAchievementCertificates(){
     .cert-title{font-size:38px;font-weight:bold;margin:15px 0;letter-spacing:2px;font-family:'Arial',sans-serif;color:#000}
     .cert-subtitle{font-size:17px;margin:0;color:#333}
     .cert-name{font-size:32px;font-weight:bold;margin:15px 0;border-bottom:1px solid #000;display:inline-block;padding-bottom:5px;color:#10243e;font-family:'Arial',sans-serif;text-transform:uppercase;}
-    .cert-meta{font-size:16px;margin:5px 0;color:#444}
     .cert-details{margin: 15px 0; padding: 15px; border: 1px dashed #ccc; background: #fff; width: 85%; border-radius: 10px;}
-    .cert-sign-container{width:100%;display:flex;justify-content:center;padding:0;box-sizing:border-box;margin-top:30px}
-    .sign-box{text-align:center;font-size:14px;color:#222;width:250px;position:relative}
-    .sign-img{position:absolute;bottom:25px;left:50%;transform:translateX(-50%);max-height:60px;max-width:160px;object-fit:contain}
-    .sign-line{border-top:1px solid #000;margin-top:40px;margin-bottom:6px}
+    
+    /* BAHAGIAN CSS TANDATANGAN YANG DIBAIKI */
+    .cert-sign-container{width:100%;display:flex;justify-content:center;margin-top:20px}
+    .sign-box{text-align:center;font-size:14px;color:#222;width:260px;}
+    .sign-img-wrapper{height:65px; display:flex; align-items:flex-end; justify-content:center; margin-bottom:2px;}
+    .sign-img{max-height:85px; max-width:180px; object-fit:contain;}
+    .sign-line{border-top:1px solid #000; margin-bottom:6px; width:100%;}
   </style></head><body>${pagesHTML}</body></html>`);
   popup.document.close();
   setTimeout(() => { popup.focus(); popup.print(); }, 500);
@@ -1576,7 +1579,7 @@ function renderArchive(){
  const bin = state.recycleBin || [];
  if(bin.length === 0){
    return `${pageHead('Tong Kitar Semula','Senarai rekod murid atau acara yang dipadam. Anda boleh memulihkan (restore) atau memadamnya secara kekal.')}
-   <div class="panel p-8 text-center text-slate-500">
+    <div class="panel p-8 text-center text-slate-500">
       <i data-lucide="trash-2" class="mx-auto mb-4 h-12 w-12 text-slate-300"></i>
       <h3 class="text-lg font-bold text-[#10243e] mb-1">Tong Sampah Kosong</h3>
       <p class="max-w-md mx-auto text-sm">Setiap data murid atau acara yang dipadam akan dihantar ke sini. Ini bagi mengelakkan kehilangan data secara tidak sengaja.</p>
