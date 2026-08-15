@@ -1181,7 +1181,18 @@ function renderAnalysis(){
  <section class="panel mt-6 p-6"><h3 class="mb-4 font-extrabold">Statistik Acara</h3><div class="grid gap-4 md:grid-cols-3"><div class="rounded-2xl bg-slate-50 p-5"><b class="text-2xl">${c.completed}/${state.events.length}</b><p class="text-sm text-slate-500">Acara selesai</p></div><div class="rounded-2xl bg-slate-50 p-5"><b class="text-2xl">${Math.round(c.completed/Math.max(state.events.length,1)*100)}%</b><p class="text-sm text-slate-500">Kemajuan kejohanan</p></div><div class="rounded-2xl bg-slate-50 p-5"><b class="text-2xl">${Math.max(...state.events.map(e=>eventRegs(e).length),0)}</b><p class="text-sm text-slate-500">Penyertaan acara tertinggi</p></div></div></section>`;
 }
 function auditTable(list,active){
- return miniGrid(list.map(s=>active?[s.bib,s.name,s.className,s.house,state.registrations.filter(r=>r.studentId===s.id).map(r=>state.events.find(e=>e.id===r.eventId)?.name).join(', ')]:[s.name,s.className,s.gender,s.house,`Daftar Atlet`]),active?['Bib','Nama','Kelas','Rumah','Acara']:['Nama','Kelas','Jantina','Rumah','Tindakan']);
+ return miniGrid(list.map(s=>{
+   if(active){
+     const regs = state.registrations.filter(r => r.studentId === s.id);
+     const evs = regs.map(r => state.events.find(e => e.id === r.eventId)).filter(Boolean);
+     const ind = evs.filter(e => e.type !== 'Relay' && e.type !== 'Merentas Desa').length;
+     const relay = evs.filter(e => e.type === 'Relay').length;
+     const names = evs.map(e => e.name).join(', ');
+     return [s.bib, s.name, s.className, s.house, `<span class="badge bg-sky-50 text-sky-700 font-bold">${ind}</span>`, `<span class="badge bg-amber-50 text-amber-700 font-bold">${relay}</span>`, names];
+   } else {
+     return [s.name, s.className, s.gender, s.house, `Daftar Atlet`];
+   }
+ }), active ? ['Bib','Nama','Kelas','Rumah','Individu','Relay','Senarai Acara'] : ['Nama','Kelas','Jantina','Rumah','Tindakan']);
 }
 function renderSettings(){
   if (currentUserRole !== 'ADMIN') {
