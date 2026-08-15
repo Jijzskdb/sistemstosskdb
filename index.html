@@ -1272,7 +1272,9 @@ function printParticipationCertificates(){
         
         <div class="cert-sign-container">
           <div class="sign-box">
-            ${signSrc ? `<img src="${signSrc}" class="sign-img">` : '<div style="height:35px"></div>'}
+            <div class="sign-img-wrapper">
+              ${signSrc ? `<img src="${signSrc}" class="sign-img">` : ''}
+            </div>
             <div class="sign-line"></div>
             <b>${gb}</b><br>Guru Besar<br>${schoolName.toUpperCase()}
           </div>
@@ -1294,9 +1296,10 @@ function printParticipationCertificates(){
     .cert-meta{font-size:15px;margin:10px 0;color:#444}
     .cert-body{font-size:16px;max-width:700px;line-height:1.6;margin:10px auto;color:#333}
     .cert-sign-container{width:100%;display:flex;justify-content:flex-end;padding:0 60px;box-sizing:border-box;margin-top:10px}
-    .sign-box{text-align:center;font-size:13px;color:#222;width:240px;position:relative}
-    .sign-img{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);max-height:50px;max-width:160px;object-fit:contain}
-    .sign-line{border-top:1px solid #333;margin-top:35px;margin-bottom:6px}
+    .sign-box{text-align:center;font-size:13px;color:#222;width:240px;}
+    .sign-img-wrapper{height:55px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:2px;}
+    .sign-img{max-height:75px;max-width:160px;object-fit:contain;}
+    .sign-line{border-top:1px solid #333;margin-bottom:6px;width:100%;}
   </style></head><body>${pagesHTML}</body></html>`);
   popup.document.close();
   setTimeout(() => { popup.focus(); popup.print(); }, 500);
@@ -1382,7 +1385,6 @@ function printAchievementCertificates(){
     .cert-name{font-size:32px;font-weight:bold;margin:15px 0;border-bottom:1px solid #000;display:inline-block;padding-bottom:5px;color:#10243e;font-family:'Arial',sans-serif;text-transform:uppercase;}
     .cert-details{margin: 15px 0; padding: 15px; border: 1px dashed #ccc; background: #fff; width: 85%; border-radius: 10px;}
     
-    /* BAHAGIAN CSS TANDATANGAN YANG DIBAIKI */
     .cert-sign-container{width:100%;display:flex;justify-content:center;margin-top:20px}
     .sign-box{text-align:center;font-size:14px;color:#222;width:260px;}
     .sign-img-wrapper{height:65px; display:flex; align-items:flex-end; justify-content:center; margin-bottom:2px;}
