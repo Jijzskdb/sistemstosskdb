@@ -2066,7 +2066,7 @@ function openJudge(eventId){
             ${heat.rows.map(r => {
               if(!r.studentId) return '';
               const s = state.students.find(x => x.id === r.studentId);
-              const rRes = s ? rr.find(x => x.studentId === s.id && x.stage === 'heat') : null;
+              const rRes = s ? rr.find(x => x.studentId === s.id && x.stage === (isDirectFinal ? 'final' : 'heat')) : null;
               return `<div class="rounded-xl border bg-white p-3"><div class="mb-2 flex justify-between"><b>${s.bib} · ${s.name}</b><span class="text-xs text-slate-400">Lorong ${r.lane}</span></div><div class="grid grid-cols-2 gap-2"><input data-value="${s.id}" type="text" class="field" placeholder="Masa" value="${rRes?.value||''}"><select data-status="${s.id}" class="field"><option ${rRes?.status==='SAH'?'selected':''}>SAH</option><option ${rRes?.status==='DNS'?'selected':''}>DNS</option><option ${rRes?.status==='DQ'?'selected':''}>DQ</option><option ${rRes?.status==='RB'?'selected':''}>RB</option></select></div></div>`;
             }).join('')}
           </div>
@@ -2085,7 +2085,7 @@ function openJudge(eventId){
         const value = valInput.value.trim();
         const status = statusInput ? statusInput.value : 'SAH';
         return {s, value, status};
-      }).filter(Boolean);
+      }).filter(x => x && x.value !== '');
 
       let finalEntries = finalQualifiers.map(s => {
         if(!s) return null;
@@ -2097,27 +2097,39 @@ function openJudge(eventId){
         return {s, value, status};
       }).filter(x => x && x.value !== '');
 
-      state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'heat');
-
-      entries.forEach(x => {
-        if(x.value !== '') {
-          state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank: 0, status: x.status, medal: '', points: 0, stage: 'heat'});
-        }
-      });
-
-      if (finalEntries.length > 0) {
-        state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
-        finalEntries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
-        finalEntries.forEach((x, i) => {
-          const rank = i + 1;
-          const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
-          const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
-          state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
-        });
-        e.status = 'Selesai';
-        toast('Keputusan Separuh Akhir & Peringkat Akhir Disimpan!');
+      if (isDirectFinal) {
+         state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
+         entries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
+         entries.forEach((x, i) => {
+           const rank = i + 1;
+           const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
+           const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
+           state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
+         });
+         e.status = 'Selesai';
+         toast('Keputusan Akhir berjaya disimpan!');
       } else {
-        toast('Masa Separuh Akhir berjaya dikemaskini dan disimpan!');
+         state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'heat');
+         entries.forEach(x => {
+           if(x.value !== '') {
+             state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank: 0, status: x.status, medal: '', points: 0, stage: 'heat'});
+           }
+         });
+
+         if (finalEntries.length > 0) {
+           state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
+           finalEntries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
+           finalEntries.forEach((x, i) => {
+             const rank = i + 1;
+             const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
+             const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
+             state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
+           });
+           e.status = 'Selesai';
+           toast('Keputusan Separuh Akhir & Peringkat Akhir Disimpan!');
+         } else {
+           toast('Masa Separuh Akhir berjaya dikemaskini dan disimpan!');
+         }
       }
 
       await saveTypes(['results', 'events']);
@@ -2535,32 +2547,32 @@ async function saveSettings(){
  const savedHouses = [];
  const savedHouseStyles = {};
  document.querySelectorAll('#houses-tbody tr.house-row').forEach(tr => {
-   const name = tr.querySelector('.house-name-input')?.value.trim();
-   const color = tr.querySelector('.house-color-input')?.value.trim() || '#475569';
-   const bg = tr.querySelector('.house-bg-input')?.value.trim() || '#f1f5f9';
-   if (name) {
-     savedHouses.push(name);
-     savedHouseStyles[name] = [color, bg];
-   }
+    const name = tr.querySelector('.house-name-input')?.value.trim();
+    const color = tr.querySelector('.house-color-input')?.value.trim() || '#475569';
+    const bg = tr.querySelector('.house-bg-input')?.value.trim() || '#f1f5f9';
+    if (name) {
+      savedHouses.push(name);
+      savedHouseStyles[name] = [color, bg];
+    }
  });
  if (savedHouses.length > 0) {
-   state.settings.houses = savedHouses;
-   state.settings.houseStyles = savedHouseStyles;
-   houses = savedHouses;
-   houseStyle = savedHouseStyles;
+    state.settings.houses = savedHouses;
+    state.settings.houseStyles = savedHouseStyles;
+    houses = savedHouses;
+    houseStyle = savedHouseStyles;
  }
 
  const historicalRecords = [];
  document.querySelectorAll('#historical-tbody tr').forEach(tr => {
-   const y = tr.querySelector('.hist-year')?.value.trim();
-   const no = tr.querySelector('.hist-no')?.value.trim();
-   const name = tr.querySelector('.hist-name')?.value.trim();
-   const cat = tr.querySelector('.hist-cat')?.value.trim();
-   const holder = tr.querySelector('.hist-holder')?.value.trim();
-   const val = tr.querySelector('.hist-val')?.value.trim();
-   if(y || name || holder) {
-     historicalRecords.push({year:y || '2022', no:no || '', name:name || '', category:cat || '', holder:holder || '', value:val || ''});
-   }
+    const y = tr.querySelector('.hist-year')?.value.trim();
+    const no = tr.querySelector('.hist-no')?.value.trim();
+    const name = tr.querySelector('.hist-name')?.value.trim();
+    const cat = tr.querySelector('.hist-cat')?.value.trim();
+    const holder = tr.querySelector('.hist-holder')?.value.trim();
+    const val = tr.querySelector('.hist-val')?.value.trim();
+    if(y || name || holder) {
+      historicalRecords.push({year:y || '2022', no:no || '', name:name || '', category:cat || '', holder:holder || '', value:val || ''});
+    }
  });
  state.settings.historicalRecords = historicalRecords;
  state.settings.logo = state.settings.logo || null;
