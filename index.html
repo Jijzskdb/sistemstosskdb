@@ -86,7 +86,9 @@
       </div>
       <div class="flex items-center gap-2">
        <label data-template-id="year-label" for="year-select" class="canva-text hidden font-bold text-slate-500 sm:block"></label> <select id="competition-select" class="field !w-auto !py-2 max-w-[240px]" aria-label="Kejohanan aktif"></select>
-       <select id="year-select" class="field !w-auto !py-2" aria-label="Tahun aktif"></select> <span id="sync-status" class="hidden rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 md:inline-flex">Memuat data…</span>
+       <select id="year-select" class="field !w-auto !py-2" aria-label="Tahun aktif"></select> 
+       <span id="user-role-badge" class="hidden rounded-full bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700 md:inline-flex">Peranan: —</span>
+       <span id="sync-status" class="hidden rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 md:inline-flex">Memuat data…</span>
       </div>
      </div>
     </header>
@@ -112,6 +114,9 @@ const NAV=[
 let houses=['Merah','Biru','Hijau','Kuning'];
 let houseStyle={Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
 let registrationHouseFilter = houses[0];
+let currentUserRole = 'PEMERHATI';
+let currentUserHouse = '';
+
 const defaultData={
   settings:{
     school:'SK Seri Gemilang',
@@ -183,7 +188,9 @@ function calc(){
  return {standing,active:new Set(regs.map(r=>r.studentId)),completed:state.events.filter(e=>e.status==='Selesai').length};
 }
 function pageHead(title,desc,actions=''){return `<div class="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p class="mb-1 text-xs font-extrabold uppercase tracking-[.18em] text-[#14718f]">STOS · ${esc(state.settings.activeYear)} · ${esc(state.settings.tournament)}</p><h2 class="font-['Fraunces'] text-3xl font-bold text-[#10243e]">${title}</h2><p class="mt-1 text-slate-500">${desc}</p></div><div class="flex flex-wrap gap-2">${actions}</div></div>`}
-const action=(label,icon,act,kind='btn-soft')=>`<button type="button" data-action="${act}" class="btn ${kind}"><i data-lucide="${icon}" class="h-4 w-4"></i>${label}</button>`;
+const action=(label,icon,act,kind='btn-soft')=>currentUserRole==='PEMERHATI'?'':`<button type="button" data-action="${act}" class="btn ${kind}"><i data-lucide="${icon}" class="h-4 w-4"></i>${label}</button>`;
+const actionAlways=(label,icon,act,kind='btn-soft')=>`<button type="button" data-action="${act}" class="btn ${kind}"><i data-lucide="${icon}" class="h-4 w-4"></i>${label}</button>`;
+
 function render(){
  const label=NAV.find(n=>n[0]===currentView)?.[2]||'Dashboard'; $('#view-title').textContent=label;
  const fn={dashboard:renderDashboard,students:renderStudents,events:renderEvents,draw:renderDraw,schedule:renderSchedule,registration:renderRegistration,judges:renderJudges,winners:renderWinners,standings:renderStandings,records:renderRecords,analysis:renderAnalysis,settings:renderSettings,archive:renderArchive}[currentView];
@@ -191,6 +198,7 @@ function render(){
 }
 function renderDashboard(){
  const c=calc(), total=state.students.length, completed=c.completed;
+ const bannerBtn = currentUserRole === 'ADMIN' ? `<button type="button" data-action="banner-upload-trigger" class="btn bg-white text-[#09243b]"><i data-lucide="upload"></i>Muat Naik Banner</button><input id="banner-file-input" type="file" accept="image/*" class="hidden">` : '';
  return `${pageHead('Pusat Kawalan Kejohanan','Ringkasan langsung prestasi, penyertaan dan kemajuan acara.')}
  <section class="hero-image relative mb-6 overflow-hidden rounded-[28px] bg-[#09243b] text-white shadow-xl">
   <img data-template-id="dashboard-banner" id="dashboard-banner" loading="lazy" class="canva-image absolute inset-0 h-full w-full object-cover opacity-45">
@@ -200,8 +208,7 @@ function renderDashboard(){
    <h3 class="font-['Fraunces'] text-3xl font-bold md:text-5xl">${esc(state.settings.tournament)}</h3>
    <p class="mt-3 text-white/75">${esc(state.settings.school)} · Semangat Kesukanan, Kecemerlangan Bersama</p>
    <div class="flex items-center gap-3 mt-5">
-    <button type="button" data-action="banner-upload-trigger" class="btn bg-white text-[#09243b]"><i data-lucide="upload"></i>Muat Naik Banner</button>
-    <input id="banner-file-input" type="file" accept="image/*" class="hidden">
+    ${bannerBtn}
     <button data-action="banner-help" class="btn btn-soft !bg-white/20 text-white"><i data-lucide="help-circle"></i>Info</button>
    </div>
   </div>
@@ -210,8 +217,8 @@ function renderDashboard(){
  ${[['Murid',total,'users'],['Atlet Aktif',c.active.size,'person-standing'],['Jumlah Acara',state.events.length,'trophy'],['Acara Selesai',completed,'check-circle'],['Rekod Baharu',state.results.filter(r=>r.status==='RB').length,'sparkles'],['Rumah Mendahului',c.standing[0]?.house||'-','flag']].map((x,i)=>`<article class="panel p-5"><div class="mb-4 flex h-10 w-10 items-center justify-center rounded-xl ${i===4?'bg-amber-100 text-amber-700':'bg-cyan-50 text-cyan-700'}"><i data-lucide="${x[2]}"></i></div><p class="text-2xl font-extrabold">${esc(x[1])}</p><p class="text-sm text-slate-500">${x[0]}</p></article>`).join('')}
  </div>
  <div class="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
-  <section class="panel overflow-hidden"><div class="flex items-center justify-between p-5"><h3 class="font-extrabold">Kedudukan Pingat Rumah</h3>${action('Lihat Penuh','arrow-right','go-standings')}</div>${standingTable(c.standing)}</section>
-  <section class="panel p-5"><h3 class="mb-4 font-extrabold">Akses Pantas</h3><div class="grid gap-2">${[['Tambah Murid','user-plus','add-student'],['Daftar Atlet','clipboard-plus','go-registration'],['Masukkan Keputusan','clipboard-check','go-judges'],['Cetak Start List','printer','pdf-start'],['Buka Analisis','pie-chart','go-analysis']].map(x=>action(x[0],x[1],x[2],'btn-soft w-full !justify-start')).join('')}</div></section>
+  <section class="panel overflow-hidden"><div class="flex items-center justify-between p-5"><h3 class="font-extrabold">Kedudukan Pingat Rumah</h3>${actionAlways('Lihat Penuh','arrow-right','go-standings')}</div>${standingTable(c.standing)}</section>
+  <section class="panel p-5"><h3 class="mb-4 font-extrabold">Akses Pantas</h3><div class="grid gap-2">${(currentUserRole === 'ADMIN' ? [['Tambah Murid','user-plus','add-student']] : []).concat([['Daftar Atlet','clipboard-plus','go-registration'],['Masukkan Keputusan','clipboard-check','go-judges'],['Cetak Start List','printer','pdf-start'],['Buka Analisis','pie-chart','go-analysis']]).map(x=>actionAlways(x[0],x[1],x[2],'btn-soft w-full !justify-start')).join('')}</div></section>
  </div>
  <section class="panel mt-6 p-5"><h3 class="mb-4 font-extrabold">Aktiviti Terkini</h3><div class="grid gap-3 md:grid-cols-2">${state.activities.slice(0,4).map((a,i)=>`<div class="flex gap-3 rounded-xl bg-slate-50 p-3"><span class="mt-1 h-2.5 w-2.5 rounded-full ${i===1?'bg-amber-400':'bg-cyan-500'}"></span><div><p class="font-semibold">${esc(a)}</p><p class="text-xs text-slate-400">${i+1} jam lalu</p></div></div>`).join('')}</div></section>`;
 }
@@ -242,7 +249,7 @@ function standingTable(rows) {
     </tbody>
   </table></div>`;
 }
-function renderStudents() {
+function renderStudents(){
   const maxInd = state.settings.maxIndividualEvents ?? 2;
   const maxRelay = state.settings.maxRelayEvents ?? 2;
   let rows = state.students.filter(s => (filters.house === 'Semua' || s.house === filters.house) && (`${s.name} ${s.bib} ${s.className}`.toLowerCase().includes(filters.search.toLowerCase())));
@@ -281,7 +288,11 @@ function renderStudents() {
     };
   });
 
-  return `${pageHead('Master Murid', 'Urus profil murid, Bib automatik, status pendaftaran & pinjaman kategori.', action('Tambah Murid', 'user-plus', 'add-student', 'btn-primary') + action('Import Excel', 'upload', 'import-students') + action('Jana PDF', 'printer', 'pdf-students') + action('Export Excel', 'download', 'export-students'))}
+  const topActions = currentUserRole === 'ADMIN' 
+    ? action('Tambah Murid', 'user-plus', 'add-student', 'btn-primary') + action('Import Excel', 'upload', 'import-students') + actionAlways('Jana PDF', 'printer', 'pdf-students') + actionAlways('Export Excel', 'download', 'export-students')
+    : actionAlways('Jana PDF', 'printer', 'pdf-students', 'btn-primary') + actionAlways('Export Excel', 'download', 'export-students');
+
+  return `${pageHead('Master Murid', 'Urus profil murid, Bib automatik, status pendaftaran & pinjaman kategori.', topActions)}
  <input id="file-import" type="file" accept=".csv,.xlsx,.xls" class="hidden">
  <section class="panel mb-5 grid gap-4 p-4 md:grid-cols-[1fr_220px]"><label><span class="mb-1 block text-xs font-bold text-slate-500">Carian Murid</span><input id="student-search" class="field" value="${esc(filters.search)}" placeholder="Nama, Bib atau kelas"></label><label><span class="mb-1 block text-xs font-bold text-slate-500">Rumah Sukan</span><select id="house-filter" class="field"><option>Semua</option>${houses.map(h => `<option ${filters.house === h ? 'selected' : ''}>${h}</option>`).join('')}</select></label></section>
  <section class="panel overflow-hidden">
@@ -306,6 +317,7 @@ function renderStudents() {
         ${studentsWithRegStats.map(s => {
           const indWarning = s.indCount > maxInd ? 'text-rose-600 font-extrabold' : 'text-slate-700';
           const relayWarning = s.relayCount > maxRelay ? 'text-rose-600 font-extrabold' : 'text-slate-700';
+          const rowActions = currentUserRole === 'ADMIN' ? `<div class="flex gap-1">${action('Edit', 'pencil', 'edit-student')} ${action(pendingDelete === s.id ? 'Sahkan' : 'Arkib', 'archive', 'delete-student', 'btn-danger')}</div>` : '<span class="text-slate-400 text-xs">Mod Baca Sahaja</span>';
           return `<tr>
             <td class="font-extrabold">${s.bib}</td>
             <td><button class="font-bold text-[#146b8c] hover:underline text-left" data-action="profile" data-id="${s.id}">${esc(s.name)}</button></td>
@@ -317,7 +329,7 @@ function renderStudents() {
             <td class="text-center ${relayWarning}">${s.relayCount} / ${maxRelay}</td>
             <td class="text-center">${s.xcCount ? '<span class="badge bg-amber-50 text-amber-700 font-bold">Ya</span>' : '<span class="text-slate-300">—</span>'}</td>
             <td>${s.borrowedInfo ? `<span class="badge bg-indigo-50 text-indigo-700 text-[10px]" title="${esc(s.borrowedInfo)}">Pinjam: ${esc(s.borrowedInfo)}</span>` : '<span class="text-slate-300 text-xs">Tiada</span>'}</td>
-            <td><div class="flex gap-1">${action('Edit', 'pencil', 'edit-student')} ${action(pendingDelete === s.id ? 'Sahkan' : 'Arkib', 'archive', 'delete-student', 'btn-danger')}</div><span class="hidden row-id">${s.id}</span></td>
+            <td>${rowActions}<span class="hidden row-id">${s.id}</span></td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -327,9 +339,16 @@ function renderStudents() {
  </section>`;
 }
 function renderEvents(){
- return `${pageHead('Master Acara','Katalog acara balapan, padang, relay dan merentas desa.',action('Tambah Acara','plus','add-event','btn-primary')+action('Import Excel','upload','import-events')+action('Jana PDF','printer','pdf-events')+action('Export Excel','download','export-events'))}
+ const topActions = currentUserRole === 'ADMIN'
+   ? action('Tambah Acara', 'plus', 'add-event', 'btn-primary') + action('Import Excel', 'upload', 'import-events') + actionAlways('Jana PDF', 'printer', 'pdf-events') + actionAlways('Export Excel', 'download', 'export-events')
+   : actionAlways('Jana PDF', 'printer', 'pdf-events', 'btn-primary') + actionAlways('Export Excel', 'download', 'export-events');
+
+ return `${pageHead('Master Acara','Katalog acara balapan, padang, relay dan merentas desa.', topActions)}
  <input id="event-file-import" type="file" accept=".csv,.xlsx,.xls" class="hidden">
- <section class="panel overflow-hidden"><div class="table-wrap"><table class="data-table"><thead><tr><th>No.</th><th>Nama Acara</th><th>Kategori</th><th>Jenis</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${state.events.map(e=>`<tr><td class="font-extrabold">${e.no}</td><td class="font-bold">${e.name}</td><td>${e.category}</td><td><span class="badge bg-sky-50 text-sky-700">${e.type}</span></td><td>${e.status}</td><td><div class="flex gap-1">${action('Edit','pencil','edit-event')} ${action(pendingDelete===e.id?'Sahkan':'Arkib','archive','delete-event','btn-danger')}</div><span class="hidden row-id">${e.id}</span></td></tr>`).join('')}</tbody></table></div></section>`;
+ <section class="panel overflow-hidden"><div class="table-wrap"><table class="data-table"><thead><tr><th>No.</th><th>Nama Acara</th><th>Kategori</th><th>Jenis</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${state.events.map(e=>{
+   const rowActions = currentUserRole === 'ADMIN' ? `<div class="flex gap-1">${action('Edit','pencil','edit-event')} ${action(pendingDelete===e.id?'Sahkan':'Arkib','archive','delete-event','btn-danger')}</div>` : '<span class="text-slate-400 text-xs">Mod Baca Sahaja</span>';
+   return `<tr><td class="font-extrabold">${e.no}</td><td class="font-bold">${e.name}</td><td>${e.category}</td><td><span class="badge bg-sky-50 text-sky-700">${e.type}</span></td><td>${e.status}</td><td>${rowActions}<span class="hidden row-id">${e.id}</span></td></tr>`;
+ }).join('')}</tbody></table></div></section>`;
 }
 function eventRegs(e){return state.registrations.filter(r=>r.eventId===e.id).map(r=>state.students.find(s=>s.id===r.studentId)).filter(Boolean)}
 function getEventLanes(e) {
@@ -521,7 +540,7 @@ function renderDraw(){
  const lanesTrack = state.settings.maxTrackLanes ?? 6;
  const lanesLongTrack = state.settings.maxLongTrackLanes ?? 3;
  const lanesRelay = state.settings.maxRelayLanes ?? 3;
- return `${pageHead('Master Undian','Undian lorong rasmi mengikut tetapan lorong khusus balapan & jarak; urutan ini digunakan oleh Borang Hakim.',action('Cetak Semua','printer','pdf-start','btn-primary'))}
+ return `${pageHead('Master Undian','Undian lorong rasmi mengikut tetapan lorong khusus balapan & jarak; urutan ini digunakan oleh Borang Hakim.',actionAlways('Cetak Semua','printer','pdf-start','btn-primary'))}
  <div class="grid gap-5">${state.events.map(e=>{
     const lanes = getEventLanes(e);
     const regs = eventRegs(e);
@@ -532,16 +551,17 @@ function renderDraw(){
       participantCount = Object.keys(byHouse).filter(h=>byHouse[h].length>0).length;
     }
     const isDirectFinal = participantCount <= lanes;
+    const drawBtn = currentUserRole === 'ADMIN' ? `<button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>` : '';
 
     if(e.type==='Merentas Desa')return `<section class="panel p-5"><div class="mb-4 flex justify-between"><div><b>${e.no} (Akhir) · ${e.name} - Akhir</b><p class="text-sm text-slate-500">Senarai mass-start tanpa lorong</p></div><span class="badge bg-orange-50 text-orange-700">${regs.length} peserta</span></div><div class="flex flex-wrap gap-2">${regs.map((s,i)=>`<span class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">${i+1}. ${s.bib} ${s.name}</span>`).join('')||'<span class="text-slate-400">Belum ada peserta</span>'}</div></section>`;
-    if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} (Akhir) · ${e.name} - Akhir</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div><button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button></div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
+    if(e.type==='Padang')return `<section class="panel p-5"><div class="mb-3 flex items-center justify-between"><div><b>${e.no} (Akhir) · ${e.name} - Akhir</b><p class="text-sm text-slate-500">Urutan undian · Struktur Percubaan 1 hingga 6</p></div>${drawBtn}</div>${miniGrid(laneParticipants(e).map((s,i)=>[i+1,s?.bib||'—',s?.name||'Kosong','P1 · P2 · P3 · P4 · P5 · P6']),['Giliran','Bib','Atlet','Percubaan'])}</section>`;
     
     if(e.type==='Relay' || e.type==='Balapan'){
       const heats = getEventHeats(e);
       return `<section class="panel p-5">
         <div class="mb-3 flex items-center justify-between">
           <div><b>${e.no} · ${e.name}</b><p class="text-sm text-slate-500">${lanes} lorong max · ${isDirectFinal ? 'Akhir (Cukup Lorong/Pasukan)' : 'Auto-Siri Separuh Akhir'}</p></div>
-          <button type="button" data-action="draw-lanes" data-id="${e.id}" class="btn btn-primary"><i data-lucide="shuffle"></i>Jana Undian</button>
+          ${drawBtn}
         </div>
         ${heats ? heats.map(heat=>`
           <div class="mb-5 last:mb-0">
@@ -703,6 +723,7 @@ function renderSchedule(){
                 } else if(item.status === 'Sedang Berlangsung') {
                   statusBadge = `<span class="badge bg-sky-50 text-sky-700 font-bold">Sedang Berlangsung</span>`;
                 }
+                const schedBtn = currentUserRole === 'ADMIN' ? `<button type="button" data-action="edit-schedule-time" data-id="${item.id}" class="btn btn-soft !py-1 !px-2 text-xs"><i data-lucide="clock" class="h-3 w-3 inline mr-1"></i> Kemaskini Masa</button>` : '<span class="text-slate-400 text-xs">—</span>';
                 return `<tr>
                   <td class="font-bold text-slate-700">${esc(item.no)}</td>
                   <td><span class="badge bg-slate-100 text-slate-700">${esc(item.category)}</span></td>
@@ -713,7 +734,7 @@ function renderSchedule(){
                   <td>${esc(item.arenaTime)}</td>
                   <td class="font-extrabold text-[#146b8c] bg-sky-50/30">${esc(item.startTime)}</td>
                   <td>${statusBadge}</td>
-                  <td><button type="button" data-action="edit-schedule-time" data-id="${item.id}" class="btn btn-soft !py-1 !px-2 text-xs"><i data-lucide="clock" class="h-3 w-3 inline mr-1"></i> Kemaskini Masa</button></td>
+                  <td>${schedBtn}</td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -723,7 +744,7 @@ function renderSchedule(){
     </div>`;
   }).join('');
 
-  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding (Semua acara kini lengkap bertagging peringkat siri & akhir).')}
+  return `${pageHead('Atur Cara & Masa Kejohanan','Susunan kronologi disiplin peserta: Lapor Diri, Panggilan Akhir, Masuk Arena, dan Masa Bertanding.')}
   ${sectionsHtml || '<p class="p-10 text-center text-slate-500">Tiada jadual acara direkodkan.</p>'}`;
 }
 
@@ -812,13 +833,18 @@ function openScheduleEdit(synthId){
 function renderRegistration(){
   const active=new Set(state.registrations.map(r=>r.studentId));
   const activeHouses = state.settings.houses || houses;
-  if(!activeHouses.includes(registrationHouseFilter)){
+  
+  if (currentUserRole === 'PENGURUS' && currentUserHouse) {
+    registrationHouseFilter = currentUserHouse;
+  } else if (!activeHouses.includes(registrationHouseFilter)){
     registrationHouseFilter = activeHouses[0];
   }
 
-  const houseOptions = activeHouses.map(h => `<option value="${esc(h)}" ${registrationHouseFilter === h ? 'selected' : ''}>Rumah ${esc(h)}</option>`).join('');
-  const currentHouseStyle = houseStyle[registrationHouseFilter] || ['#334155', '#f1f5f9'];
+  const houseOptions = currentUserRole === 'PENGURUS' && currentUserHouse
+    ? `<option value="${esc(currentUserHouse)}">Rumah ${esc(currentUserHouse)}</option>`
+    : activeHouses.map(h => `<option value="${esc(h)}" ${registrationHouseFilter === h ? 'selected' : ''}>Rumah ${esc(h)}</option>`).join('');
 
+  const currentHouseStyle = houseStyle[registrationHouseFilter] || ['#334155', '#f1f5f9'];
   const filteredEvents = state.events.filter(e => e.type !== 'Merentas Desa');
 
   const rowsHtml = filteredEvents.map(e => {
@@ -832,17 +858,19 @@ function renderRegistration(){
       const reg = regs[slotIdx];
       if (reg) {
         const student = state.students.find(s => s.id === reg.studentId);
+        const cancelBtn = (currentUserRole === 'ADMIN' || currentUserRole === 'PENGURUS') 
+          ? `<button type="button" data-action="remove-registration" data-reg-id="${reg.id}" class="btn btn-danger !p-2 text-xs" title="Batal Pendaftaran"><i data-lucide="x" class="h-4 w-4"></i> Batal</button>` 
+          : '';
         return `
         <div class="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
           <div class="min-w-0 flex-1">
             <p class="font-extrabold text-[#09243b]">${esc(student?.name || 'Tidak dikenali')}</p>
             <p class="text-xs text-slate-500 font-bold">${esc(student?.bib || '')} · Kelas: ${esc(student?.className || '')}</p>
           </div>
-          <button type="button" data-action="remove-registration" data-reg-id="${reg.id}" class="btn btn-danger !p-2 text-xs" title="Batal Pendaftaran">
-            <i data-lucide="x" class="h-4 w-4"></i> Batal
-          </button>
+          ${cancelBtn}
         </div>`;
       } else {
+        if (currentUserRole === 'PEMERHATI' || currentUserRole === 'HAKIM') return '';
         return `
         <button type="button" data-action="quick-register" data-event-id="${e.id}" data-house="${esc(registrationHouseFilter)}" class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 hover:bg-slate-100 py-3 px-4 text-xs font-bold text-slate-500 transition-all">
           <i data-lucide="plus" class="h-4 w-4"></i> Tambah Atlet Slot ${slotIdx + 1}
@@ -868,11 +896,13 @@ function renderRegistration(){
     </div>`;
   }).join('');
 
-  return `${pageHead('Pendaftaran Atlet','Urus pendaftaran mengikut Rumah Sukan melalui paparan senarai yang fokus.',action('Daftar Atlet Pantas','clipboard-plus','register-athlete','btn-primary'))}
+  const regTopAction = (currentUserRole === 'ADMIN' || currentUserRole === 'PENGURUS') ? action('Daftar Atlet Pantas', 'clipboard-plus', 'register-athlete', 'btn-primary') : '';
+
+  return `${pageHead('Pendaftaran Atlet','Urus pendaftaran mengikut Rumah Sukan melalui paparan senarai yang fokus.', regTopAction)}
  <section class="panel mb-6 p-5 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
   <div class="flex items-center gap-3">
     <span class="text-sm font-bold text-slate-700">Pilih Rumah Sukan:</span>
-    <select id="reg-house-dropdown" class="field !w-auto !py-2 font-bold" style="color: ${currentHouseStyle[0]}; background-color: ${currentHouseStyle[1]}">
+    <select id="reg-house-dropdown" class="field !w-auto !py-2 font-bold" style="color: ${currentHouseStyle[0]}; background-color: ${currentHouseStyle[1]}" ${currentUserRole === 'PENGURUS' ? 'disabled' : ''}>
       ${houseOptions}
     </select>
   </div>
@@ -886,8 +916,11 @@ function renderRegistration(){
 }
 
 function renderJudges(){
- return `${pageHead('Borang Hakim','Masukkan masa, jarak, enam percubaan atau keputusan.',action('Cetak Keputusan','file-check','pdf-results','btn-primary'))}
- <div class="grid gap-5">${state.events.map(e=>`<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type}</p></div><div class="flex flex-wrap gap-2"><button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button><button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`).join('')}</div>`;
+ return `${pageHead('Borang Hakim','Masukkan masa, jarak, enam percubaan atau keputusan.',actionAlways('Cetak Keputusan','file-check','pdf-results','btn-primary'))}
+ <div class="grid gap-5">${state.events.map(e=>{
+   const judgeBtn = (currentUserRole === 'ADMIN' || currentUserRole === 'HAKIM') ? `<button data-action="judge-event" data-id="${e.id}" class="btn btn-primary"><i data-lucide="pencil-line"></i>Isi Keputusan</button>` : '';
+   return `<section class="panel p-5"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-extrabold">${e.no} · ${e.name}</h3><p class="text-sm text-slate-500">${e.category} · ${e.type}</p></div><div class="flex flex-wrap gap-2">${judgeBtn}<button data-action="print-judge-form" data-id="${e.id}" class="btn btn-soft"><i data-lucide="printer"></i>Cetak Borang</button></div></div>${judgePreview(e)}</section>`;
+ }).join('')}</div>`;
 }
 
 function judgePreview(e){
@@ -977,7 +1010,7 @@ function renderWinners(){
    .filter(r => r.rank >= 1 && r.rank <= 5 && r.stage === 'final')
    .sort((a,b)=>(state.events.find(e=>e.id===a.eventId)?.no||'').localeCompare(state.events.find(e=>e.id===b.eventId)?.no||'')||a.rank-b.rank);
  
- return `${pageHead('Senarai Pemenang','Semakan pingat dan kedudukan terbaik (Tempat 1 hingga 5).',action('Jana PDF Rasmi','printer','pdf-results','btn-primary'))}<section class="panel">${miniGrid(rows.map(r=>{
+ return `${pageHead('Senarai Pemenang','Semakan pingat dan kedudukan terbaik (Tempat 1 hingga 5).',actionAlways('Jana PDF Rasmi','printer','pdf-results','btn-primary'))}<section class="panel">${miniGrid(rows.map(r=>{
    const e=state.events.find(x=>x.id===r.eventId), s=state.students.find(x=>x.id===r.studentId);
    let medalText = r.medal;
    if(!medalText){
@@ -986,20 +1019,15 @@ function renderWinners(){
      else medalText = '—';
    }
    return [e?.no, e?.name, r.rank, s?.bib, s?.name, medalText, r.status];
- }),['No.','Acara','Tempat','Bib','Pemenang','Pingat / Kedudukan','Status'])}</section>`;
+}),['No.','Acara','Tempat','Bib','Pemenang','Pingat / Kedudukan','Status'])}</section>`;
 }
 function renderStandings(){
  const c=calc();
  const studentMedals = state.students.map(s => {
-   // 1. Asingkan keputusan Individu (Bukan Relay)
    const indResults = state.results.filter(x => x.studentId === s.id && x.stage === 'final' && state.events.find(e => e.id === x.eventId)?.type !== 'Relay');
-   
    let teamGold = 0, teamSilver = 0, teamBronze = 0, teamPoints = 0;
-   
-   // 2. Cari acara Relay yang pelajar ini berdaftar
    const relayRegs = state.registrations.filter(r => r.studentId === s.id && state.events.find(e => e.id === r.eventId)?.type === 'Relay');
    
-   // 3. Semak jika Rumah Sukan pelajar ini memenangi acara Relay tersebut (kredit kepada semua pelari)
    relayRegs.forEach(reg => {
      const houseResult = state.results.find(res => {
         if(res.eventId !== reg.eventId || res.stage !== 'final') return false;
@@ -1022,16 +1050,9 @@ function renderStandings(){
    const totalGold = indGold + teamGold;
    const totalSilver = indSilver + teamSilver;
    const totalBronze = indBronze + teamBronze;
-   // Mata individu + mata sumbangan kumpulan
    const points = indResults.reduce((a, r) => a + (+r.points || 0), 0) + teamPoints;
 
-   return {
-     s,
-     indGold, indSilver, indBronze,
-     teamGold, teamSilver, teamBronze,
-     totalGold, totalSilver, totalBronze,
-     points
-   };
+   return { s, indGold, indSilver, indBronze, teamGold, teamSilver, teamBronze, totalGold, totalSilver, totalBronze, points };
  });
 
  const getCategoryGroup = (s) => {
@@ -1044,13 +1065,8 @@ function renderStandings(){
  };
 
  const winnersList = studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0);
-
  const getChamp = (gender, catGroup) => {
-   const candidates = winnersList.filter(x => {
-     const sGender = x.s.gender === gender;
-     const sCat = getCategoryGroup(x.s);
-     return sGender && sCat === catGroup;
-   });
+   const candidates = winnersList.filter(x => x.s.gender === gender && getCategoryGroup(x.s) === catGroup);
    candidates.sort((a,b) => {
      if(b.indGold !== a.indGold) return b.indGold - a.indGold;
      if(b.indSilver !== a.indSilver) return b.indSilver - a.indSilver;
@@ -1061,22 +1077,13 @@ function renderStandings(){
    return candidates[0];
  };
 
- const champs = {
-   l9: getChamp('Lelaki', 'B9'),
-   p9: getChamp('Perempuan', 'B9'),
-   l12: getChamp('Lelaki', 'B12'),
-   p12: getChamp('Perempuan', 'B12')
- };
+ const champs = { l9: getChamp('Lelaki', 'B9'), p9: getChamp('Perempuan', 'B9'), l12: getChamp('Lelaki', 'B12'), p12: getChamp('Perempuan', 'B12') };
 
- return `${pageHead('Kedudukan Pingat','Susunan: Emas, Perak, Gangsa, kemudian jumlah mata.',action('Cetak Kedudukan','printer','pdf-standings','btn-primary'))}
- 
- <!-- Bahagian Atas: Kedudukan Pingat Rumah -->
+ return `${pageHead('Kedudukan Pingat','Susunan: Emas, Perak, Gangsa, kemudian jumlah mata.',actionAlways('Cetak Kedudukan','printer','pdf-standings','btn-primary'))}
  <section class="panel mb-6 overflow-hidden">
   <h3 class="p-5 font-extrabold text-[#10243e] border-b border-slate-100">Kedudukan Pingat Rumah Sukan</h3>
   ${standingTable(c.standing)}
  </section>
-
- <!-- Bahagian Tengah: Olahragawan / Olahragawati -->
  <section class="panel mb-6 p-5">
   <h3 class="mb-4 font-extrabold text-lg text-[#10243e]">Anugerah Olahragawan & Olahragawati Cemerlang</h3>
   <div class="grid gap-4 md:grid-cols-2">
@@ -1086,49 +1093,36 @@ function renderStandings(){
         <div class="rounded-xl bg-[#09243b] p-4 text-white">
           <p class="text-xs text-white/60 font-semibold">Olahragawan Harapan (B9)</p>
           <p class="mt-1 text-lg font-extrabold">${champs.l9 ? esc(champs.l9.s.name) : 'Belum ditentukan'}</p>
-          <p class="text-xs text-[#e4aa36] mt-1">
-            ${champs.l9 ? `Individu: ${champs.l9.indGold}G ${champs.l9.indSilver}S ${champs.l9.indBronze}B | Kumpulan: ${champs.l9.teamGold}G ${champs.l9.teamSilver}S ${champs.l9.teamBronze}B` : 'Tiada rekod pingat'}
-          </p>
+          <p class="text-xs text-[#e4aa36] mt-1">${champs.l9 ? `Individu: ${champs.l9.indGold}G ${champs.l9.indSilver}S ${champs.l9.indBronze}B | Kumpulan: ${champs.l9.teamGold}G ${champs.l9.teamSilver}S ${champs.l9.teamBronze}B` : 'Tiada rekod pingat'}</p>
         </div>
         <div class="rounded-xl bg-[#09243b] p-4 text-white">
           <p class="text-xs text-white/60 font-semibold">Olahragawati Harapan (B9)</p>
           <p class="mt-1 text-lg font-extrabold">${champs.p9 ? esc(champs.p9.s.name) : 'Belum ditentukan'}</p>
-          <p class="text-xs text-[#e4aa36] mt-1">
-            ${champs.p9 ? `Individu: ${champs.p9.indGold}G ${champs.p9.indSilver}S ${champs.p9.indBronze}B | Kumpulan: ${champs.p9.teamGold}G ${champs.p9.teamSilver}S ${champs.p9.teamBronze}B` : 'Tiada rekod pingat'}
-          </p>
+          <p class="text-xs text-[#e4aa36] mt-1">${champs.p9 ? `Individu: ${champs.p9.indGold}G ${champs.p9.indSilver}S ${champs.p9.indBronze}B | Kumpulan: ${champs.p9.teamGold}G ${champs.p9.teamSilver}S ${champs.p9.teamBronze}B` : 'Tiada rekod pingat'}</p>
         </div>
       </div>
     </div>
-
     <div class="rounded-2xl border border-blue-200 bg-sky-50/50 p-5">
       <h4 class="font-bold text-blue-800 text-sm mb-3 uppercase tracking-wider">KATEGORI BAWAH 12 TAHUN</h4>
       <div class="grid gap-3">
         <div class="rounded-xl bg-[#09243b] p-4 text-white">
           <p class="text-xs text-white/60 font-semibold">Olahragawan Cemerlang (B12)</p>
           <p class="mt-1 text-lg font-extrabold">${champs.l12 ? esc(champs.l12.s.name) : 'Belum ditentukan'}</p>
-          <p class="text-xs text-[#e4aa36] mt-1">
-            ${champs.l12 ? `Individu: ${champs.l12.indGold}G ${champs.l12.indSilver}S ${champs.l12.indBronze}B | Kumpulan: ${champs.l12.teamGold}G ${champs.l12.teamSilver}S ${champs.l12.teamBronze}B` : 'Tiada rekod pingat'}
-          </p>
+          <p class="text-xs text-[#e4aa36] mt-1">${champs.l12 ? `Individu: ${champs.l12.indGold}G ${champs.l12.indSilver}S ${champs.l12.indBronze}B | Kumpulan: ${champs.l12.teamGold}G ${champs.l12.teamSilver}S ${champs.l12.teamBronze}B` : 'Tiada rekod pingat'}</p>
         </div>
         <div class="rounded-xl bg-[#09243b] p-4 text-white">
           <p class="text-xs text-white/60 font-semibold">Olahragawati Cemerlang (B12)</p>
           <p class="mt-1 text-lg font-extrabold">${champs.p12 ? esc(champs.p12.s.name) : 'Belum ditentukan'}</p>
-          <p class="text-xs text-[#e4aa36] mt-1">
-            ${champs.p12 ? `Individu: ${champs.p12.indGold}G ${champs.p12.indSilver}S ${champs.p12.indBronze}B | Kumpulan: ${champs.p12.teamGold}G ${champs.p12.teamSilver}S ${champs.p12.teamBronze}B` : 'Tiada rekod pingat'}
-          </p>
+          <p class="text-xs text-[#e4aa36] mt-1">${champs.p12 ? `Individu: ${champs.p12.indGold}G ${champs.p12.indSilver}S ${champs.p12.indBronze}B | Kumpulan: ${champs.p12.teamGold}G ${champs.p12.teamSilver}S ${champs.p12.teamBronze}B` : 'Tiada rekod pingat'}</p>
         </div>
       </div>
     </div>
   </div>
  </section>
-
- <!-- Bahagian Bawah: Penyumbang Pingat Individu & Kumpulan -->
  <section class="panel overflow-hidden">
   <h3 class="p-5 font-extrabold text-[#10243e] border-b border-slate-100">Senarai Penyumbang Pingat Individu & Kumpulan</h3>
   ${miniGrid(studentMedals.filter(x => x.totalGold + x.totalSilver + x.totalBronze > 0).sort((a,b)=>b.totalGold-a.totalGold||b.totalSilver-a.totalSilver).map(x=>[
-    x.s.bib,
-    x.s.name,
-    x.s.className,
+    x.s.bib, x.s.name, x.s.className,
     `<span class="font-bold text-amber-500">${x.indGold}</span> + ${x.teamGold}`,
     `<span class="font-bold text-slate-400">${x.indSilver}</span> + ${x.teamSilver}`,
     `<span class="font-bold text-amber-700">${x.indBronze}</span> + ${x.teamBronze}`
@@ -1143,7 +1137,7 @@ function renderRecords(){
  const hist=(state.settings.historicalRecords||[]).map(r=>({no:r.no, name:r.name, category:r.category, holder:r.holder, value:r.value, year:r.year}));
  const allRecords = [...rb, ...hist].sort((a,b)=>b.year.localeCompare(a.year) || (a.no||'').localeCompare(b.no||''));
 
- return `${pageHead('Rekod Sekolah','Rekod terbaik dan sejarah kejohanan sejak tahun 2022.',action('Cetak Rekod','printer','pdf-records'))}
+ return `${pageHead('Rekod Sekolah','Rekod terbaik dan sejarah kejohanan sejak tahun 2022.',actionAlways('Cetak Rekod','printer','pdf-records'))}
  <section class="panel overflow-hidden">${miniGrid(allRecords.map(r=>[r.no,r.name,r.category,r.holder,r.value,r.year]),['No.','Acara','Kategori','Pemegang Rekod','Pencapaian','Tahun'])}</section>
  <section class="mt-6 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 p-7 text-[#3d2700]"><i data-lucide="sparkles" class="mb-3 h-8 w-8"></i><h3 class="font-['Fraunces'] text-2xl font-bold">${rb.length} rekod baharu musim ini</h3><p class="mt-2 max-w-xl">Rekod baharu (RB) dikesan secara automatik daripada borang hakim dan sejarah rekod sekolah boleh diuruskan di halaman Tetapan.</p></section>`;
 }
@@ -1172,8 +1166,7 @@ function competitionComparisonTable(){
 function renderAnalysis(){
  const c=calc(), max=Math.max(...c.standing.map(x=>x.gold+x.silver+x.bronze),1), totalPoints=Math.max(c.standing.reduce((a,x)=>a+x.points,0),1);
  const withP=state.students.filter(s=>c.active.has(s.id)), without=state.students.filter(s=>!c.active.has(s.id));
- return `${pageHead('Analisis','Audit penyertaan, prestasi rumah dan kemajuan kejohanan.',action('Cetak Analisis','printer','pdf-analysis','btn-primary')+action('Export Data','download','export-analysis'))}
-
+ return `${pageHead('Analisis','Audit penyertaan, prestasi rumah dan kemajuan kejohanan.',actionAlways('Cetak Analisis','printer','pdf-analysis','btn-primary')+actionAlways('Export Data','download','export-analysis'))}
  <section class="panel mb-6 p-6">
   <div class="flex flex-wrap items-end justify-between gap-4">
    <div><h3 class="font-extrabold">Perbandingan Antara Kejohanan</h3><p class="text-sm text-slate-500">Perbandingan sejarah merentas tahun dan jenis kejohanan berdasarkan data yang telah disimpan.</p></div>
@@ -1191,15 +1184,24 @@ function auditTable(list,active){
  return miniGrid(list.map(s=>active?[s.bib,s.name,s.className,s.house,state.registrations.filter(r=>r.studentId===s.id).map(r=>state.events.find(e=>e.id===r.eventId)?.name).join(', ')]:[s.name,s.className,s.gender,s.house,`Daftar Atlet`]),active?['Bib','Nama','Kelas','Rumah','Acara']:['Nama','Kelas','Jantina','Rumah','Tindakan']);
 }
 function renderSettings(){
- const hist = state.settings.historicalRecords || [];
- const activeHouses = state.settings.houses || houses;
- const activeHouseStyles = state.settings.houseStyles || houseStyle;
- const maxInd = state.settings.maxIndividualEvents ?? 2;
- const maxRelay = state.settings.maxRelayEvents ?? 2;
- const maxTrackLanes = state.settings.maxTrackLanes ?? 6;
- const maxLongTrackLanes = state.settings.maxLongTrackLanes ?? 3;
- const maxRelayLanes = state.settings.maxRelayLanes ?? 3;
- return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif, had syarat acara & bilangan lorong.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
+  if (currentUserRole !== 'ADMIN') {
+    return `${pageHead('Tetapan','Mod Baca Sahaja · Tetapan sistem dikunci untuk peranan selain Admin.')}
+    <div class="panel p-8 text-center text-slate-500">
+      <i data-lucide="lock" class="mx-auto mb-4 h-12 w-12 text-amber-500"></i>
+      <h3 class="text-lg font-bold text-[#10243e] mb-1">Akses Terhad</h3>
+      <p class="max-w-md mx-auto text-sm">Anda log masuk sebagai <b>${currentUserRole}</b>. Hanya akaun berstatus <b>ADMIN</b> yang dibenarkan mengubah tetapan sistem.</p>
+    </div>`;
+  }
+
+  const hist = state.settings.historicalRecords || [];
+  const activeHouses = state.settings.houses || houses;
+  const activeHouseStyles = state.settings.houseStyles || houseStyle;
+  const maxInd = state.settings.maxIndividualEvents ?? 2;
+  const maxRelay = state.settings.maxRelayEvents ?? 2;
+  const maxTrackLanes = state.settings.maxTrackLanes ?? 6;
+  const maxLongTrackLanes = state.settings.maxLongTrackLanes ?? 3;
+  const maxRelayLanes = state.settings.maxRelayLanes ?? 3;
+  return `${pageHead('Tetapan','Identiti kejohanan, tahun aktif, had syarat acara & bilangan lorong.',action('Simpan Tetapan','save','save-settings','btn-primary'))}
  <form id="settings-form" class="grid gap-6 xl:grid-cols-2">
  <section class="panel p-6 xl:col-span-2">
   <div class="flex flex-wrap items-center justify-between gap-4">
@@ -1334,6 +1336,15 @@ function renderSettings(){
  </form>`;
 }
 function renderArchive(){
+  if (currentUserRole !== 'ADMIN') {
+    return `${pageHead('Tong Kitar Semula','Mod Baca Sahaja · Akses terhad kepada Admin.')}
+    <div class="panel p-8 text-center text-slate-500">
+      <i data-lucide="lock" class="mx-auto mb-4 h-12 w-12 text-amber-500"></i>
+      <h3 class="text-lg font-bold text-[#10243e] mb-1">Akses Terhad</h3>
+      <p class="max-w-md mx-auto text-sm">Hanya akaun berstatus <b>ADMIN</b> yang boleh menguruskan Tong Kitar Semula.</p>
+    </div>`;
+  }
+
  const bin = state.recycleBin || [];
  if(bin.length === 0){
    return `${pageHead('Tong Kitar Semula','Senarai rekod murid atau acara yang dipadam. Anda boleh memulihkan (restore) atau memadamnya secara kekal.')}
@@ -1389,7 +1400,7 @@ function bindView(){
  const s=$('#student-search');if(s)s.oninput=()=>{filters.search=s.value;render()};
  const h=$('#house-filter');if(h)h.onchange=()=>{filters.house=h.value;render()};
  const regHouseSel=$('#reg-house-dropdown');
- if(regHouseSel){
+ if(regHouseSel && currentUserRole === 'ADMIN'){
    regHouseSel.onchange=e=>{
      registrationHouseFilter=e.target.value;
      render();
@@ -1418,6 +1429,48 @@ function autoRegisterCrossCountry(student){
  return true;
 }
 async function handleAction(a,b){
+  if (currentUserRole !== 'ADMIN') {
+    const adminOnlyActions = [
+      'add-student', 'edit-student', 'delete-student', 'import-students',
+      'add-event', 'edit-event', 'delete-event', 'import-events',
+      'draw-lanes', 'edit-schedule-time',
+      'new-competition', 'finish-competition', 'save-settings',
+      'upload-logo-trigger', 'remove-logo', 'banner-upload-trigger',
+      'add-historical-record', 'delete-historical-record',
+      'add-house-setting', 'delete-house-setting',
+      'restore-bin', 'purge-bin', 'empty-bin'
+    ];
+    
+    if (adminOnlyActions.includes(a)) {
+      toast('Akses ditolak: Hanya Admin yang mempunyai kebenaran.', 'error');
+      return;
+    }
+
+    if (currentUserRole === 'HAKIM') {
+      const hakimAllowed = ['judge-event', 'print-judge-form'];
+      if (!hakimAllowed.includes(a) && !a.startsWith('pdf-') && !a.startsWith('export-') && a !== 'profile') {
+        toast('Akses ditolak: Hakim hanya boleh mengakses Borang Hakim dan laporan.', 'error');
+        return;
+      }
+    }
+
+    if (currentUserRole === 'PENGURUS') {
+      const pengurusAllowed = ['register-athlete', 'quick-register', 'remove-registration', 'tab-active', 'tab-inactive', 'profile'];
+      if (!pengurusAllowed.includes(a) && !a.startsWith('pdf-') && !a.startsWith('export-')) {
+        toast('Akses ditolak: Pengurus Rumah Sukan hanya boleh mendaftar atlet rumah sendiri dan melihat laporan.', 'error');
+        return;
+      }
+    }
+
+    if (currentUserRole === 'PEMERHATI') {
+      const viewerAllowed = ['profile', 'tab-active', 'tab-inactive'];
+      if (!viewerAllowed.includes(a) && !a.startsWith('pdf-') && !a.startsWith('export-')) {
+        toast('Akses ditolak: Akaun anda adalah Mod Baca Sahaja (Pemerhati).', 'error');
+        return;
+      }
+    }
+  }
+
  if(a.startsWith('go-'))return switchView(a.replace('go-',''));
  if(a==='add-student'){openModal('Tambah Murid',studentForm());bindStudentForm();return}
  if(a==='edit-student'){const s=state.students.find(x=>x.id===getRowId(b));openModal('Edit Murid',studentForm(s));bindStudentForm();return}
@@ -1607,7 +1660,7 @@ function bindEventForm(){
  $('#event-form').onsubmit=async ev=>{ev.preventDefault();const id=$('#ef-id').value,old=state.events.find(x=>x.id===id);const item={id:id||uid('e'),no:$('#ef-no').value,name:$('#ef-name').value,category:$('#ef-category').value,type:$('#ef-type').value,status:old?.status||'Belum Mula',record:old?.record||0,unit:old?.unit||'s', date:old?.date||'2026-05-08', startTime:old?.startTime||'08:00', reportTime:old?.reportTime||'07:30', lastCallTime:old?.lastCallTime||'07:40', arenaTime:old?.arenaTime||'07:50'};if(old)Object.assign(old,item);else state.events.push(item);await saveTypes(['events']);closeModal();render()};
 }
 function openRegistration(preEventId = '', preHouse = ''){
- const targetHouse = preHouse || registrationHouseFilter;
+ const targetHouse = currentUserRole === 'PENGURUS' && currentUserHouse ? currentUserHouse : (preHouse || registrationHouseFilter);
  const filteredStudents = state.students.filter(s => s.house === targetHouse);
  const studentOptions = filteredStudents.map(s=>`<option value="${s.id}">${s.bib} · ${s.name} · Rumah ${s.house}</option>`).join('');
  const eventOptions = state.events.filter(e => e.type !== 'Merentas Desa').map(e=>`<option value="${e.id}" ${e.id === preEventId ? 'selected' : ''}>${e.no} · ${e.name} (${e.type})</option>`).join('');
@@ -2309,6 +2362,13 @@ async function apiGet() {
  if (!res.ok) throw new Error(`HTTP ${res.status}`);
  const json = await res.json();
  if (!json.ok) throw new Error(json.error || 'Gagal membaca Google Sheets.');
+
+ if (json.user) {
+   currentUserRole = String(json.user.peranan || 'PEMERHATI').toUpperCase();
+   currentUserHouse = String(json.user.rumah || '').trim();
+   updateUserRoleBadge();
+ }
+
  return json.records || [];
 }
 
@@ -2397,6 +2457,16 @@ function applyRemoteRecords(data) {
  const schoolLabel=$('[data-template-id="school-name"]');
  if(schoolLabel&&state.settings.school){schoolLabel.textContent=state.settings.school;schoolLabel.innerHTML=esc(state.settings.school);}
  render();
+}
+
+function updateUserRoleBadge() {
+  const badge = $('#user-role-badge');
+  if (!badge) return;
+  let text = `Peranan: ${currentUserRole}`;
+  if (currentUserRole === 'PENGURUS' && currentUserHouse) {
+    text += ` (${currentUserHouse})`;
+  }
+  badge.textContent = text;
 }
 
 async function saveTypes(types){
@@ -2511,5 +2581,5 @@ $('#year-select').onchange=e=>{
 };
 if (GOOGLE_ID_TOKEN) { initAfterLogin(); } else { renderGoogleLogin(); }
 </script>
- </body>
+  </body>
 </html>
