@@ -2018,6 +2018,14 @@ function openJudge(eventId){
         });
       });
       state.results = state.results.filter(r => !(r.eventId === eventId && r.stage === 'final'));
+      
+      // TAMBAH FUNGSI SORT (SUSUN MASA TERPANTAS RELAY) DI SINI
+      entries.sort((a, b) => {
+        const masaA = Number(a.value.replace(/[^0-9]/g, ''));
+        const masaB = Number(b.value.replace(/[^0-9]/g, ''));
+        return masaA - masaB;
+      });
+
       entries.forEach((x, i) => {
         const rank = i + 1, medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '', points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
         state.results.push({id: uid('x'), eventId, studentId: x.repStudent.id, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
@@ -2099,7 +2107,14 @@ function openJudge(eventId){
 
       if (isDirectFinal) {
          state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
-         entries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
+         
+         // SORT MASA BALAPAN
+         entries.sort((a, b) => {
+           const masaA = Number(a.value.replace(/[^0-9]/g, ''));
+           const masaB = Number(b.value.replace(/[^0-9]/g, ''));
+           return masaA - masaB;
+         });
+         
          entries.forEach((x, i) => {
            const rank = i + 1;
            const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
@@ -2118,7 +2133,14 @@ function openJudge(eventId){
 
          if (finalEntries.length > 0) {
            state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
-           finalEntries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value));
+           
+           // SORT MASA BALAPAN
+           finalEntries.sort((a, b) => {
+             const masaA = Number(a.value.replace(/[^0-9]/g, ''));
+             const masaB = Number(b.value.replace(/[^0-9]/g, ''));
+             return masaA - masaB;
+           });
+           
            finalEntries.forEach((x, i) => {
              const rank = i + 1;
              const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
@@ -2460,7 +2482,7 @@ function makeJudgeFormPdf(e){
   <div class="pdf-header">
     ${logoImg}
     <div>
-      <h1>STOS · BORANG HAKIM</h1>
+      <h1>STOS · BORANG Hakim</h1>
       <p>${escPrint(state.settings.school)}</p>
       <p>${escPrint(e.no)} · ${escPrint(e.name)} · ${escPrint(e.category)} · ${escPrint(e.type)} · <strong style="color: #e4aa36;">PUSINGAN: ${isDirectFinal ? 'AKHIR' : 'SEPARUH AKHIR & AKHIR'}</strong></p>
     </div>
