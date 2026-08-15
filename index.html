@@ -109,7 +109,7 @@ const NAV=[
   ['dashboard','layout-dashboard','Dashboard'],['students','users','Master Murid'],['events','trophy','Master Acara'],
   ['draw','shuffle','Master Undian'],['schedule','calendar','Jadual & Call Room'],['registration','clipboard-plus','Pendaftaran Atlet'],['judges','clipboard-check','Borang Hakim'],
   ['winners','medal','Senarai Pemenang'],['standings','bar-chart-3','Kedudukan Pingat'],['records','award','Rekod Sekolah'],
-  ['analysis','pie-chart','Analisis'],['settings','settings','Tetapan'],['archive','trash-2','Tong Kitar Semula']
+  ['analysis','pie-chart','Analisis'],['certificates','award','Jana Sijil'],['settings','settings','Tetapan'],['archive','trash-2','Tong Kitar Semula']
 ];
 let houses=['Merah','Biru','Hijau','Kuning'];
 let houseStyle={Merah:['#dc554c','#fff0ee'],Biru:['#247ca4','#eaf6fb'],Hijau:['#2c9c70','#eaf8f2'],Kuning:['#d99b20','#fff8dd']};
@@ -123,6 +123,8 @@ const defaultData={
     tournament:'Kejohanan Olahraga Tahunan Kali Ke-34',
     activeYear:'2026',
     activeCompetitionId:'KJ-2026-001',
+    headmasterName:'En. Guru Besar Bin Pengetua',
+    headmasterSign:null,
     years:[],
     crossPoints:[10,9,8,7,6,5,4,3,2,1],
     historicalRecords:[],
@@ -193,7 +195,7 @@ const actionAlways=(label,icon,act,kind='btn-soft')=>`<button type="button" data
 
 function render(){
  const label=NAV.find(n=>n[0]===currentView)?.[2]||'Dashboard'; $('#view-title').textContent=label;
- const fn={dashboard:renderDashboard,students:renderStudents,events:renderEvents,draw:renderDraw,schedule:renderSchedule,registration:renderRegistration,judges:renderJudges,winners:renderWinners,standings:renderStandings,records:renderRecords,analysis:renderAnalysis,settings:renderSettings,archive:renderArchive}[currentView];
+ const fn={dashboard:renderDashboard,students:renderStudents,events:renderEvents,draw:renderDraw,schedule:renderSchedule,registration:renderRegistration,judges:renderJudges,winners:renderWinners,standings:renderStandings,records:renderRecords,analysis:renderAnalysis,certificates:renderCertificates,settings:renderSettings,archive:renderArchive}[currentView];
  $('#view').innerHTML=fn(); bindView(); iconRefresh();
 }
 function renderDashboard(){
@@ -1194,6 +1196,186 @@ function auditTable(list,active){
    }
  }), active ? ['Bib','Nama','Kelas','Rumah','Individu','Relay','Senarai Acara'] : ['Nama','Kelas','Jantina','Rumah','Tindakan']);
 }
+
+function renderCertificates(){
+  const activeHouses = state.settings.houses || houses;
+  return `${pageHead('Jana Sijil Rasmi','Pilih jenis sijil untuk dicetak secara pukal bagi Sijil Penyertaan atau Sijil Pencapaian (Pemenang).')}
+  <div class="grid gap-6 md:grid-cols-2">
+    <section class="panel p-6">
+      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700 mb-4">
+        <i data-lucide="award" class="h-6 w-6"></i>
+      </div>
+      <h3 class="text-xl font-extrabold text-[#10243e] mb-2">Sijil Penyertaan</h3>
+      <p class="text-sm text-slate-500 mb-6">Sijil penghargaan kepada semua murid berdaftar / atlet yang mengambil bahagian dalam kejohanan.</p>
+      <div class="space-y-4">
+        <label class="block">
+          <span class="text-xs font-bold text-slate-700 mb-1 block">Tapis Mengikut Rumah Sukan</span>
+          <select id="cert-part-house" class="field">
+            <option value="Semua">Semua Rumah Sukan</option>
+            ${activeHouses.map(h => `<option value="${esc(h)}">Rumah ${esc(h)}</option>`).join('')}
+          </select>
+        </label>
+        <button type="button" data-action="print-participation-certs" class="btn btn-primary w-full"><i data-lucide="printer"></i> Cetak Sijil Penyertaan (Pukal)</button>
+      </div>
+    </section>
+
+    <section class="panel p-6">
+      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 mb-4">
+        <i data-lucide="trophy" class="h-6 w-6"></i>
+      </div>
+      <h3 class="text-xl font-extrabold text-[#10243e] mb-2">Sijil Pencapaian (Pemenang)</h3>
+      <p class="text-sm text-slate-500 mb-6">Sijil khas untuk atlet yang memenangi tempat ke-1, ke-2 atau ke-3 (Emas, Perak, Gangsa) dalam acara rasmi.</p>
+      <div class="space-y-4">
+        <label class="block">
+          <span class="text-xs font-bold text-slate-700 mb-1 block">Tapis Mengikut Kedudukan/Pingat</span>
+          <select id="cert-win-filter" class="field">
+            <option value="Semua">Semua Pemenang (Tempat 1 - 3)</option>
+            <option value="Emas">Johan / Emas Sahaja</option>
+            <option value="Perak">Naib Johan / Perak Sahaja</option>
+            <option value="Gangsa">Ketiga / Gangsa Sahaja</option>
+          </select>
+        </label>
+        <button type="button" data-action="print-achievement-certs" class="btn btn-primary w-full !bg-amber-600 hover:!bg-amber-700"><i data-lucide="printer"></i> Cetak Sijil Pencapaian (Pukal)</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function printParticipationCertificates(){
+  const houseFilter = $('#cert-part-house').value;
+  const studentsToPrint = state.students.filter(s => houseFilter === 'Semua' || s.house === houseFilter);
+  if(studentsToPrint.length === 0) { toast('Tiada murid dijumpai untuk cetakan sijil.','error'); return; }
+
+  const popup = window.open('', '_blank');
+  if(!popup) { toast('Sila benarkan pop-up pada pelayar anda.','error'); return; }
+
+  const escPrint = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+  const schoolName = escPrint(state.settings.school);
+  const tournamentName = escPrint(state.settings.tournament);
+  const year = escPrint(state.settings.activeYear);
+  const gb = escPrint(state.settings.headmasterName || 'Guru Besar');
+  const signSrc = state.settings.headmasterSign || '';
+  const logoSrc = state.settings.logo || '';
+
+  const pagesHTML = studentsToPrint.map(s => `
+    <div class="cert-page">
+      <div class="cert-border">
+        ${logoSrc ? `<img src="${logoSrc}" class="cert-logo">` : ''}
+        <h3 class="cert-school">${schoolName}</h3>
+        <h1 class="cert-title">SIJIL PENYERTAAN</h1>
+        <p class="cert-subtitle">Dengan ini disahkan bahawa</p>
+        <h2 class="cert-name">${escPrint(s.name)}</h2>
+        <p class="cert-meta">No. Bib: <b>${escPrint(s.bib)}</b> &nbsp;|&nbsp; Kelas: <b>${escPrint(s.className)}</b> &nbsp;|&nbsp; Rumah Sukan: <b>${escPrint(s.house)}</b></p>
+        <p class="cert-body">telah resmi mengambil bahagian dengan jayanya dalam <b>${tournamentName}</b> bagi Tahun <b>${year}</b>.</p>
+        
+        <div class="cert-sign-container">
+          <div class="sign-box">
+            ${signSrc ? `<img src="${signSrc}" class="sign-img">` : '<div style="height:35px"></div>'}
+            <div class="sign-line"></div>
+            <b>${gb}</b><br>Guru Besar
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Sijil Penyertaan Pukal</title><style>
+    @page{size:A4 landscape;margin:0}
+    body{margin:0;font-family:'Times New Roman',serif;color:#111}
+    .cert-page{width:297mm;height:210mm;padding:15mm;box-sizing:border-box;page-break-after:always;display:flex;align-items:center;justify-content:center}
+    .cert-border{width:100%;height:100%;border:8px double #146b8c;padding:30px;box-sizing:border-box;text-align:center;position:relative;background:#fcfbf9;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+    .cert-logo{width:70px;height:70px;object-fit:cover;border-radius:50%;margin-bottom:5px}
+    .cert-school{font-size:16px;text-transform:uppercase;letter-spacing:2px;margin:0;color:#09243b}
+    .cert-title{font-size:36px;font-weight:bold;margin:10px 0;letter-spacing:3px;color:#146b8c;font-family:'Arial',sans-serif}
+    .cert-subtitle{font-size:16px;font-style:italic;margin:0 0 10px;color:#555}
+    .cert-name{font-size:32px;font-weight:bold;margin:10px 0;border-bottom:2px solid #e4aa36;display:inline-block;padding-bottom:5px;color:#10243e;font-family:'Arial',sans-serif}
+    .cert-meta{font-size:15px;margin:10px 0;color:#444}
+    .cert-body{font-size:16px;max-width:700px;line-height:1.6;margin:10px auto;color:#333}
+    .cert-sign-container{width:100%;display:flex;justify-content:flex-end;padding:0 60px;box-sizing:border-box;margin-top:10px}
+    .sign-box{text-align:center;font-size:13px;color:#222;width:240px;position:relative}
+    .sign-img{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);max-height:50px;max-width:160px;object-fit:contain}
+    .sign-line{border-top:1px solid #333;margin-top:35px;margin-bottom:6px}
+  </style></head><body>${pagesHTML}</body></html>`);
+  popup.document.close();
+  setTimeout(() => { popup.focus(); popup.print(); }, 500);
+}
+
+function printAchievementCertificates(){
+  const filterVal = $('#cert-win-filter').value;
+  const rawResults = state.results.filter(r => r.rank >= 1 && r.rank <= 3 && r.stage === 'final');
+  
+  const resultsToPrint = rawResults.filter(r => {
+    if(filterVal === 'Semua') return true;
+    return r.medal === filterVal;
+  });
+
+  if(resultsToPrint.length === 0) { toast('Tiada rekod pemenang dijumpai untuk tapisan ini.','error'); return; }
+
+  const popup = window.open('', '_blank');
+  if(!popup) { toast('Sila benarkan pop-up pada pelayar anda.','error'); return; }
+
+  const escPrint = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+  const schoolName = escPrint(state.settings.school);
+  const tournamentName = escPrint(state.settings.tournament);
+  const year = escPrint(state.settings.activeYear);
+  const gb = escPrint(state.settings.headmasterName || 'Guru Besar');
+  const signSrc = state.settings.headmasterSign || '';
+  const logoSrc = state.settings.logo || '';
+
+  const pagesHTML = resultsToPrint.map(res => {
+    const s = state.students.find(x => x.id === res.studentId);
+    const e = state.events.find(x => x.id === res.eventId);
+    if(!s || !e) return '';
+
+    let rankText = `Tempat Ke-${res.rank}`;
+    if(res.rank === 1) rankText = 'JOHAN (PINGAT EMAS)';
+    else if(res.rank === 2) rankText = 'NAIB JOHAN (PINGAT PERAK)';
+    else if(res.rank === 3) rankText = 'TEMPAT KETIGA (PINGAT GANGSA)';
+
+    return `
+      <div class="cert-page">
+        <div class="cert-border" style="border-color: #d99b20;">
+          ${logoSrc ? `<img src="${logoSrc}" class="cert-logo">` : ''}
+          <h3 class="cert-school">${schoolName}</h3>
+          <h1 class="cert-title" style="color: #d99b20;">SIJIL PENCAPAIAN</h1>
+          <p class="cert-subtitle">Dengan bangganya dianugerahkan kepada</p>
+          <h2 class="cert-name">${escPrint(s.name)}</h2>
+          <p class="cert-meta">No. Bib: <b>${escPrint(s.bib)}</b> &nbsp;|&nbsp; Kelas: <b>${escPrint(s.className)}</b> &nbsp;|&nbsp; Rumah Sukan: <b>${escPrint(s.house)}</b></p>
+          <p class="cert-body">atas kejayaan merangkul <b>${rankText}</b> dalam acara <b>${escPrint(e.name)} (${escPrint(e.category)})</b> sempena <b>${tournamentName}</b> Tahun <b>${year}</b>.</p>
+          
+          <div class="cert-sign-container">
+            <div class="sign-box">
+              ${signSrc ? `<img src="${signSrc}" class="sign-img">` : '<div style="height:35px"></div>'}
+              <div class="sign-line"></div>
+              <b>${gb}</b><br>Guru Besar
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Sijil Pencapaian Pukal</title><style>
+    @page{size:A4 landscape;margin:0}
+    body{margin:0;font-family:'Times New Roman',serif;color:#111}
+    .cert-page{width:297mm;height:210mm;padding:15mm;box-sizing:border-box;page-break-after:always;display:flex;align-items:center;justify-content:center}
+    .cert-border{width:100%;height:100%;border:8px double #d99b20;padding:30px;box-sizing:border-box;text-align:center;position:relative;background:#fffdf9;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+    .cert-logo{width:70px;height:70px;object-fit:cover;border-radius:50%;margin-bottom:5px}
+    .cert-school{font-size:16px;text-transform:uppercase;letter-spacing:2px;margin:0;color:#09243b}
+    .cert-title{font-size:36px;font-weight:bold;margin:10px 0;letter-spacing:3px;font-family:'Arial',sans-serif}
+    .cert-subtitle{font-size:16px;font-style:italic;margin:0 0 10px;color:#555}
+    .cert-name{font-size:32px;font-weight:bold;margin:10px 0;border-bottom:2px solid #146b8c;display:inline-block;padding-bottom:5px;color:#10243e;font-family:'Arial',sans-serif}
+    .cert-meta{font-size:15px;margin:10px 0;color:#444}
+    .cert-body{font-size:16px;max-width:750px;line-height:1.6;margin:10px auto;color:#333}
+    .cert-sign-container{width:100%;display:flex;justify-content:flex-end;padding:0 60px;box-sizing:border-box;margin-top:10px}
+    .sign-box{text-align:center;font-size:13px;color:#222;width:240px;position:relative}
+    .sign-img{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);max-height:50px;max-width:160px;object-fit:contain}
+    .sign-line{border-top:1px solid #333;margin-top:35px;margin-bottom:6px}
+  </style></head><body>${pagesHTML}</body></html>`);
+  popup.document.close();
+  setTimeout(() => { popup.focus(); popup.print(); }, 500);
+}
+
 function renderSettings(){
   if (currentUserRole !== 'ADMIN') {
     return `${pageHead('Tetapan','Mod Baca Sahaja · Tetapan sistem dikunci untuk peranan selain Admin.')}
@@ -1237,7 +1419,12 @@ function renderSettings(){
   </div>
  </section>
 
- <section class="panel p-6"><h3 class="mb-5 font-extrabold">Sekolah & Kejohanan</h3><div class="space-y-4"><label><span class="mb-1 block font-bold">Nama Sekolah</span><input id="setting-school" class="field" value="${esc(state.settings.school)}"></label><label><span class="mb-1 block font-bold">Nama Kejohanan</span><input id="setting-tournament" class="field" value="${esc(state.settings.tournament)}"></label><label><span class="mb-1 block font-bold">Tahun Aktif</span><input id="setting-year" type="number" min="2020" max="2099" class="field" value="${state.settings.activeYear}"></label></div></section>
+ <section class="panel p-6"><h3 class="mb-5 font-extrabold">Sekolah & Kejohanan</h3><div class="space-y-4">
+  <label><span class="mb-1 block font-bold">Nama Sekolah</span><input id="setting-school" class="field" value="${esc(state.settings.school)}"></label>
+  <label><span class="mb-1 block font-bold">Nama Kejohanan</span><input id="setting-tournament" class="field" value="${esc(state.settings.tournament)}"></label>
+  <label><span class="mb-1 block font-bold">Tahun Aktif</span><input id="setting-year" type="number" min="2020" max="2099" class="field" value="${state.settings.activeYear}"></label>
+  <label><span class="mb-1 block font-bold">Nama Guru Besar (Pengelola Rasmi)</span><input id="setting-headmaster" class="field" value="${esc(state.settings.headmasterName || '')}"></label>
+ </div></section>
  
  <section class="panel p-6"><h3 class="mb-5 font-extrabold">Had Syarat & Spesifikasi Lorong</h3>
  <div class="space-y-4">
@@ -1252,21 +1439,36 @@ function renderSettings(){
  </div>
  </section>
 
- <section class="panel p-6 xl:col-span-2">
- <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-  <b class="block mb-2">Logo Sekolah / Kejohanan</b>
-  <div class="flex items-center gap-4">
-   <div id="settings-logo-preview" class="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-amber-100 overflow-hidden text-amber-600">
-    ${state.settings.logo ? `<img src="${state.settings.logo}" class="h-full w-full object-cover">` : `<i data-lucide="image" class="h-10 w-10"></i>`}
-   </div>
-   <div class="space-y-2">
-    <button type="button" data-action="upload-logo-trigger" class="btn btn-soft text-xs"><i data-lucide="upload"></i> Muat Naik Logo</button>
-    ${state.settings.logo ? `<button type="button" data-action="remove-logo" class="btn btn-danger !bg-red-50 text-red-600 text-xs py-1 px-2"><i data-lucide="trash"></i> Buang</button>` : ''}
-    <input id="logo-file-input" type="file" accept="image/*" class="hidden">
-    <p class="text-[11px] text-slate-400">Format disokong: PNG, JPG, WebP. Logo dipaparkan di menu & PDF.</p>
+ <section class="panel p-6 xl:col-span-2 grid gap-6 md:grid-cols-2">
+  <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+   <b class="block mb-2">Logo Sekolah / Kejohanan</b>
+   <div class="flex items-center gap-4">
+    <div id="settings-logo-preview" class="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-amber-100 overflow-hidden text-amber-600">
+     ${state.settings.logo ? `<img src="${state.settings.logo}" class="h-full w-full object-cover">` : `<i data-lucide="image" class="h-10 w-10"></i>`}
+    </div>
+    <div class="space-y-2">
+     <button type="button" data-action="upload-logo-trigger" class="btn btn-soft text-xs"><i data-lucide="upload"></i> Muat Naik Logo</button>
+     ${state.settings.logo ? `<button type="button" data-action="remove-logo" class="btn btn-danger !bg-red-50 text-red-600 text-xs py-1 px-2"><i data-lucide="trash"></i> Buang</button>` : ''}
+     <input id="logo-file-input" type="file" accept="image/*" class="hidden">
+     <p class="text-[11px] text-slate-400">Format disokong: PNG, JPG.</p>
+    </div>
    </div>
   </div>
- </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+   <b class="block mb-2">Tandatangan Digital Guru Besar (Untuk Sijil)</b>
+   <div class="flex items-center gap-4">
+    <div id="settings-sign-preview" class="flex h-20 w-32 shrink-0 items-center justify-center rounded-2xl bg-white border border-slate-200 overflow-hidden text-slate-400">
+     ${state.settings.headmasterSign ? `<img src="${state.settings.headmasterSign}" class="h-full w-full object-contain">` : `<span class="text-xs text-center p-2">Tiada Tandatangan</span>`}
+    </div>
+    <div class="space-y-2">
+     <button type="button" data-action="upload-sign-trigger" class="btn btn-soft text-xs"><i data-lucide="upload"></i> Muat Naik Sign</button>
+     ${state.settings.headmasterSign ? `<button type="button" data-action="remove-sign" class="btn btn-danger !bg-red-50 text-red-600 text-xs py-1 px-2"><i data-lucide="trash"></i> Buang</button>` : ''}
+     <input id="sign-file-input" type="file" accept="image/*" class="hidden">
+     <p class="text-[11px] text-slate-400">Sebaiknya latar belakang telus (PNG).</p>
+    </div>
+   </div>
+  </div>
  </section>
  
  <section class="panel p-6 xl:col-span-2">
@@ -1407,7 +1609,13 @@ function renderArchive(){
  </section>`;
 }
 function bindView(){
- $('#view').onclick=e=>{const b=e.target.closest('[data-action]');if(!b)return;handleAction(b.dataset.action,b)};
+ $('#view').onclick=e=>{
+   const b=e.target.closest('[data-action]');
+   if(!b)return;
+   if(b.dataset.action === 'print-participation-certs') { printParticipationCertificates(); return; }
+   if(b.dataset.action === 'print-achievement-certs') { printAchievementCertificates(); return; }
+   handleAction(b.dataset.action,b);
+ };
  const s=$('#student-search');if(s)s.oninput=()=>{filters.search=s.value;render()};
  const h=$('#house-filter');if(h)h.onchange=()=>{filters.house=h.value;render()};
  const regHouseSel=$('#reg-house-dropdown');
@@ -1446,7 +1654,7 @@ async function handleAction(a,b){
       'add-event', 'edit-event', 'delete-event', 'import-events',
       'draw-lanes', 'edit-schedule-time',
       'new-competition', 'finish-competition', 'save-settings',
-      'upload-logo-trigger', 'remove-logo', 'banner-upload-trigger',
+      'upload-logo-trigger', 'remove-logo', 'upload-sign-trigger', 'remove-sign', 'banner-upload-trigger',
       'add-historical-record', 'delete-historical-record',
       'add-house-setting', 'delete-house-setting',
       'restore-bin', 'purge-bin', 'empty-bin'
@@ -1522,7 +1730,7 @@ async function handleAction(a,b){
      });
      state.events=state.events.filter(x=>x.id!==id);
      state.registrations=state.registrations.filter(x=>x.eventId!==id);
-     state.results=state.results.filter(x=>x.eventId!==id);
+     state.results=state.results.filter(x=>x.studentId!==id);
      await saveTypes(['events','registrations','results','recycleBin']);
      toast('Acara telah dihantar ke Tong Kitar Semula.');
    }
@@ -1579,6 +1787,8 @@ async function handleAction(a,b){
  if(a==='save-settings'){await saveSettings();return}
  if(a==='upload-logo-trigger'){$('#logo-file-input').click();$('#logo-file-input').onchange=handleLogoUpload;return}
  if(a==='remove-logo'){state.settings.logo=null;render();return}
+ if(a==='upload-sign-trigger'){$('#sign-file-input').click();$('#sign-file-input').onchange=handleSignUpload;return}
+ if(a==='remove-sign'){state.settings.headmasterSign=null;render();return}
  if(a==='banner-upload-trigger'){$('#banner-file-input').click();$('#banner-file-input').onchange=handleBannerUpload;return}
  if(a==='banner-help'){toast('Sila muat naik fail imej, atau gantikan terus dalam editor Canva.');return}
  if(a==='add-historical-record'){
@@ -1999,6 +2209,17 @@ async function handleLogoUpload(ev){
  reader.onerror=()=>{toast('Gagal memuat naik fail imej.','error')};
  reader.readAsDataURL(file);
 }
+async function handleSignUpload(ev){
+ const file=ev.target.files[0];if(!file)return;
+ if(file.size>1024*1024*2){toast('Saiz tandatangan melebihi had 2MB.','error');ev.target.value='';return}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  state.settings.headmasterSign=reader.result;
+  render();
+  toast('Tandatangan digital berjaya dimuat naik.');
+ };
+ reader.readAsDataURL(file);
+}
 async function handleBannerUpload(ev){
  const file=ev.target.files[0];if(!file)return;
  if(file.size>1024*1024*3){toast('Saiz banner melebihi had 3MB. Sila guna fail lebih kecil.','error');ev.target.value='';return}
@@ -2275,6 +2496,7 @@ async function saveSettings(){
 
  state.settings.school=$('#setting-school').value.trim();
  state.settings.tournament=$('#setting-tournament').value.trim();
+ state.settings.headmasterName=$('#setting-headmaster').value.trim();
  state.settings.crossPoints=points.length===10?points:[10,9,8,7,6,5,4,3,2,1];
  state.settings.maxIndividualEvents = isNaN(maxIndVal) ? 2 : maxIndVal;
  state.settings.maxRelayEvents = isNaN(maxRelayVal) ? 2 : maxRelayVal;
@@ -2314,6 +2536,7 @@ async function saveSettings(){
  });
  state.settings.historicalRecords = historicalRecords;
  state.settings.logo = state.settings.logo || null;
+ state.settings.headmasterSign = state.settings.headmasterSign || null;
 
  state.settings.activeYear=String(year); const activeComp=getActiveCompetition(); if(activeComp){activeComp.year=String(year);activeComp.name=state.settings.tournament;}
  await saveTypes(['competitions','settings','students','events','registrations','results']);setupCompetitions();setupYears();
