@@ -1099,9 +1099,6 @@ function renderStandings(){
 
  const champs = { l9: getChamp('Lelaki', 'B9'), p9: getChamp('Perempuan', 'B9'), l12: getChamp('Lelaki', 'B12'), p12: getChamp('Perempuan', 'B12') };
 
- // ==========================================
- // KOD JADUAL MATRIKS TERPERINCI (BARU)
- // ==========================================
  const activeHouses = state.settings.houses || houses;
  const categories = [...new Set(state.events.map(e => e.category))].sort();
  const sortedEvents = [];
@@ -1109,7 +1106,6 @@ function renderStandings(){
  let matrixHtml = `<div class="table-wrap"><table class="data-table text-center text-xs">`;
  matrixHtml += `<thead><tr><th rowspan="2" colspan="2" class="text-left bg-slate-100 !py-2 !px-3 font-extrabold">RUMAH SUKAN</th>`;
  
- // Header Atas: Kategori Acara
  categories.forEach(cat => {
    const evs = state.events.filter(e => e.category === cat).sort((a,b)=>a.no.localeCompare(b.no));
    if(evs.length > 0) {
@@ -1119,7 +1115,6 @@ function renderStandings(){
  });
  matrixHtml += `<th rowspan="2" class="bg-[#146b8c] text-white border-l-2 border-[#146b8c] !py-2 font-extrabold">JUMLAH</th></tr><tr>`;
  
- // Header Bawah: Nama Acara
  sortedEvents.forEach(e => {
    matrixHtml += `<th class="border-l border-slate-300 bg-slate-50 !p-1 align-bottom" title="${e.name}">
      <div class="w-14 mx-auto whitespace-normal leading-tight">
@@ -1130,7 +1125,6 @@ function renderStandings(){
  });
  matrixHtml += `</tr></thead><tbody>`;
 
- // Pengiraan Data Matriks
  const medalsByEvent = {};
  sortedEvents.forEach(e => {
    medalsByEvent[e.id] = {};
@@ -1145,7 +1139,6 @@ function renderStandings(){
    }
  });
 
- // Render Baris (Rows)
  activeHouses.forEach(h => {
    const hStyle = houseStyle[h] || ['#334155', '#f1f5f9'];
    ['Emas', 'Perak', 'Gangsa'].forEach((medal, idx) => {
@@ -1177,7 +1170,6 @@ function renderStandings(){
    });
  });
  matrixHtml += `</tbody></table></div>`;
- // ==========================================
 
  return `${pageHead('Kedudukan Pingat','Susunan: Emas, Perak, Gangsa, kemudian jumlah mata.',actionAlways('Cetak Kedudukan','printer','pdf-standings','btn-primary'))}
  
@@ -1449,7 +1441,6 @@ function printAchievementCertificates(){
     const e = state.events.find(x => x.id === res.eventId);
     if(!repStudent || !e) return;
 
-    // Cari kesemua pelari jika ia acara Relay
     let studentsToCertify = [repStudent];
     if (e.type === 'Relay') {
       studentsToCertify = state.registrations
@@ -2169,7 +2160,6 @@ function openJudge(eventId){
       });
       state.results = state.results.filter(r => !(r.eventId === eventId && r.stage === 'final'));
       
-      // TAMBAH FUNGSI SORT (SUSUN MASA TERPANTAS RELAY) DI SINI
       entries.sort((a, b) => {
         const masaA = Number(a.value.replace(/[^0-9]/g, ''));
         const masaB = Number(b.value.replace(/[^0-9]/g, ''));
@@ -2258,7 +2248,6 @@ function openJudge(eventId){
       if (isDirectFinal) {
          state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
          
-         // SORT MASA BALAPAN
          entries.sort((a, b) => {
            const masaA = Number(a.value.replace(/[^0-9]/g, ''));
            const masaB = Number(b.value.replace(/[^0-9]/g, ''));
@@ -2284,7 +2273,6 @@ function openJudge(eventId){
          if (finalEntries.length > 0) {
            state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'final');
            
-           // SORT MASA BALAPAN
            finalEntries.sort((a, b) => {
              const masaA = Number(a.value.replace(/[^0-9]/g, ''));
              const masaB = Number(b.value.replace(/[^0-9]/g, ''));
@@ -2882,7 +2870,6 @@ function loadCompetitionIntoState(){
  if(state.settings.houses)houses=state.settings.houses;
  if(state.settings.houseStyles)houseStyle=state.settings.houseStyles;
 
- // KOD AUTO-SYNC BARU - Memastikan status acara 'Selesai' jika ada keputusan akhir
  state.events.forEach(e => {
    const hasFinalResults = state.results.some(r => r.eventId === e.id && r.stage === 'final' && r.rank > 0);
    if (hasFinalResults && e.status !== 'Selesai') {
