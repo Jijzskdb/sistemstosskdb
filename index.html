@@ -1023,10 +1023,19 @@ function renderWinners(){
      else medalText = '—';
    }
    
-   // Ganti nama ketua dengan nama Kuartet Rumah jika acara Relay
    const isRelay = e?.type === 'Relay';
    const bibDisplay = isRelay ? '—' : (s?.bib || '—');
-   const nameDisplay = isRelay ? `KUARTET RUMAH ${(s?.house || '').toUpperCase()}` : (s?.name || '—');
+   
+   let nameDisplay = s?.name || '—';
+   if (isRelay && s) {
+     const teamMembers = state.registrations
+       .filter(reg => reg.eventId === e?.id)
+       .map(reg => state.students.find(st => st.id === reg.studentId))
+       .filter(st => st && st.house === s.house)
+       .map(st => st.name)
+       .join(', ');
+     nameDisplay = `<b>KUARTET RUMAH ${(s.house || '').toUpperCase()}</b><br><span class="text-xs text-slate-500 font-normal">${teamMembers}</span>`;
+   }
 
    return [e?.no, e?.name, r.rank, bibDisplay, nameDisplay, medalText, r.status];
 }),['No.','Acara','Tempat','Bib','Pemenang','Pingat / Kedudukan','Status'])}</section>`;
@@ -1681,7 +1690,19 @@ function studentForm(s={}){
  return `<form id="student-form" class="grid gap-4 md:grid-cols-2"><input type="hidden" id="sf-id" value="${s.id||''}"><label class="md:col-span-2"><span class="mb-1 block font-bold">Nama Murid</span><input id="sf-name" class="field" required value="${esc(s.name||'')}"></label><label><span class="mb-1 block font-bold">Jantina</span><select id="sf-gender" class="field"><option ${s.gender==='Lelaki'?'selected':''}>Lelaki</option><option ${s.gender==='Perempuan'?'selected':''}>Perempuan</option></select></label><label><span class="mb-1 block font-bold">Kelas</span><input id="sf-class" class="field" required value="${esc(s.className||'')}"></label><label><span class="mb-1 block font-bold">Kategori</span><input id="sf-category" class="field" required value="${esc(s.category||'L12')}"></label><label><span class="mb-1 block font-bold">Rumah Sukan</span><select id="sf-house" class="field">${houses.map(h=>`<option ${s.house===h?'selected':''}>${h}</option>`).join('')}</select></label><button class="btn btn-primary md:col-span-2" type="submit">Simpan Murid</button></form>`;
 }
 function eventForm(e={}){
- return `<form id="event-form" class="grid gap-4 md:grid-cols-2"><input id="ef-id" type="hidden" value="${e.id||''}"><label class="md:col-span-2"><span class="mb-1 block font-bold">No. Acara</span><input id="ef-no" required class="field" value="${e.no||''}"></label><label class="md:col-span-2"><span class="mb-1 block font-bold">Nama Acara</span><input id="ef-name" required class="field" value="${esc(e.name||'')}"></label><label><span class="mb-1 block font-bold">Kategori</span><input id="ef-category" required class="field" value="${e.category||'L12'}"></label><label><span class="mb-1 block font-bold">Jenis</span><select id="ef-type" class="field">${['Balapan','Padang','Merentas Desa','Relay'].map(x=>`<option ${e.type===x?'selected':''}>${x}</option>`).join('')}</select></label><button class="btn btn-primary md:col-span-2" type="submit">Simpan Acara</button></form>`;
+ return `<form id="event-form" class="grid gap-4 md:grid-cols-2">
+  <input id="ef-id" type="hidden" value="${e.id||''}">
+  <label class="md:col-span-2"><span class="mb-1 block font-bold">No. Acara</span><input id="ef-no" required class="field" value="${e.no||''}"></label>
+  <label class="md:col-span-2"><span class="mb-1 block font-bold">Nama Acara</span><input id="ef-name" required class="field" value="${esc(e.name||'')}"></label>
+  <label><span class="mb-1 block font-bold">Kategori</span><input id="ef-category" required class="field" value="${e.category||'L12'}"></label>
+  <label><span class="mb-1 block font-bold">Jenis</span><select id="ef-type" class="field">${['Balapan','Padang','Merentas Desa','Relay'].map(x=>`<option ${e.type===x?'selected':''}>${x}</option>`).join('')}</select></label>
+  <label class="md:col-span-2"><span class="mb-1 block font-bold text-[#146b8c]">Status Acara</span>
+    <select id="ef-status" class="field bg-sky-50 font-bold">
+      ${['Belum Mula','Sedang Berlangsung','Selesai'].map(x=>`<option ${e.status===x?'selected':''}>${x}</option>`).join('')}
+    </select>
+  </label>
+  <button class="btn btn-primary md:col-span-2" type="submit">Simpan Acara</button>
+ </form>`;
 }
 function nextBib(house){
  const prefix=house[0].toUpperCase(), used=new Set(state.students.filter(s=>s.house===house).map(s=>parseInt(s.bib.slice(1),10)));
@@ -1926,7 +1947,19 @@ function bindStudentForm(){
  await saveTypes(['students','registrations']);closeModal();render();};
 }
 function bindEventForm(){
- $('#event-form').onsubmit=async ev=>{ev.preventDefault();const id=$('#ef-id').value,old=state.events.find(x=>x.id===id);const item={id:id||uid('e'),no:$('#ef-no').value,name:$('#ef-name').value,category:$('#ef-category').value,type:$('#ef-type').value,status:old?.status||'Belum Mula',record:old?.record||0,unit:old?.unit||'s', date:old?.date||'2026-05-08', startTime:old?.startTime||'08:00', reportTime:old?.reportTime||'07:30', lastCallTime:old?.lastCallTime||'07:40', arenaTime:old?.arenaTime||'07:50'};if(old)Object.assign(old,item);else state.events.push(item);await saveTypes(['events']);closeModal();render()};
+ $('#event-form').onsubmit=async ev=>{
+   ev.preventDefault();
+   const id=$('#ef-id').value;
+   const old=state.events.find(x=>x.id===id);
+   const statusVal = $('#ef-status') ? $('#ef-status').value : (old?.status||'Belum Mula');
+   const item={
+     id:id||uid('e'),no:$('#ef-no').value,name:$('#ef-name').value,category:$('#ef-category').value,type:$('#ef-type').value,
+     status:statusVal,
+     record:old?.record||0,unit:old?.unit||'s', date:old?.date||'2026-05-08', startTime:old?.startTime||'08:00', reportTime:old?.reportTime||'07:30', lastCallTime:old?.lastCallTime||'07:40', arenaTime:old?.arenaTime||'07:50'
+   };
+   if(old)Object.assign(old,item);else state.events.push(item);
+   await saveTypes(['events']);closeModal();render()
+ };
 }
 function openRegistration(preEventId = '', preHouse = ''){
  const targetHouse = currentUserRole === 'PENGURUS' && currentUserHouse ? currentUserHouse : (preHouse || registrationHouseFilter);
@@ -2753,6 +2786,14 @@ function loadCompetitionIntoState(){
  });
  if(state.settings.houses)houses=state.settings.houses;
  if(state.settings.houseStyles)houseStyle=state.settings.houseStyles;
+
+ // KOD AUTO-SYNC BARU - Memastikan status acara 'Selesai' jika ada keputusan akhir
+ state.events.forEach(e => {
+   const hasFinalResults = state.results.some(r => r.eventId === e.id && r.stage === 'final' && r.rank > 0);
+   if (hasFinalResults && e.status !== 'Selesai') {
+     e.status = 'Selesai';
+   }
+ });
 }
 function applyRemoteRecords(data) {
  records=normalizeRecords(data);
