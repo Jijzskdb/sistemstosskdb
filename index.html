@@ -166,7 +166,7 @@ let state=structuredClone(defaultData), records=[], currentView='dashboard', bus
 state.competitions = [{id:'KJ-2026-001',name:state.settings.tournament,year:'2026',status:'Aktif',created_at:new Date().toISOString()}];
 
 const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]||m));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'} [m]||m));
 const uid=p=>p+Math.random().toString(36).slice(2,9);
 const now=()=>new Date().toISOString();
 function iconRefresh(){if(window.lucide) lucide.createIcons()}
@@ -1100,64 +1100,64 @@ function renderStandings(){
  const champs = { l9: getChamp('Lelaki', 'B9'), p9: getChamp('Perempuan', 'B9'), l12: getChamp('Lelaki', 'B12'), p12: getChamp('Perempuan', 'B12') };
 
  // ==========================================
- // KOD JADUAL MATRIKS ASAL (Pakai Rumah Sukan di Kiri, Acara di Kolum & Susun Ikut No Acara)
+ // KOD JADUAL MATRIKS BAHARU (Rumah Sukan di Atas Kolum, Acara di Baris, Susunan No Acara Abai Huruf Depan)
  // ==========================================
  const activeHouses = state.settings.houses || houses;
- const sortedEvents = [...state.events].sort((a, b) => a.no.localeCompare(b.no));
  
- const medalsByHouseEvent = {};
- activeHouses.forEach(h => {
-   medalsByHouseEvent[h] = {};
-   sortedEvents.forEach(e => {
-     medalsByHouseEvent[h][e.id] = { Emas: 0, Perak: 0, Gangsa: 0 };
+ // Susun acara mengikut nombor acara dengan mengabaikan huruf hadapan (mengambil angka sahaja)
+ const sortedEvents = [...state.events].sort((a, b) => {
+   const getNum = str => {
+     const match = String(str || '').match(/\d+/);
+     return match ? parseInt(match[0], 10) : 0;
+   };
+   return getNum(a.no) - getNum(b.no) || String(a.no).localeCompare(String(b.no));
+ });
+ 
+ const medalsByEventHouse = {};
+ sortedEvents.forEach(e => {
+   medalsByEventHouse[e.id] = {};
+   activeHouses.forEach(h => {
+     medalsByEventHouse[e.id][h] = { Emas: 0, Perak: 0, Gangsa: 0 };
    });
  });
 
  state.results.filter(r => r.stage === 'final' && ['Emas','Perak','Gangsa'].includes(r.medal)).forEach(r => {
    const e = state.events.find(x => x.id === r.eventId);
    const s = state.students.find(x => x.id === r.studentId);
-   if (e && s && medalsByHouseEvent[s.house] && medalsByHouseEvent[s.house][e.id]) {
-     medalsByHouseEvent[s.house][e.id][r.medal]++;
+   if (e && s && medalsByEventHouse[e.id] && medalsByEventHouse[e.id][s.house]) {
+     medalsByEventHouse[e.id][s.house][r.medal]++;
    }
  });
 
  let matrixHtml = `<div class="table-wrap overflow-x-auto"><table class="data-table text-xs whitespace-nowrap">`;
  matrixHtml += `<thead><tr>`;
- matrixHtml += `<th class="w-28 bg-slate-100 !py-3 sticky left-0 z-10">RUMAH SUKAN</th>`;
+ matrixHtml += `<th class="w-40 bg-slate-100 !py-3 sticky left-0 z-20 border-r border-slate-200" rowspan="2">ACARA</th>`;
  
- sortedEvents.forEach(e => {
-   matrixHtml += `<th class="text-center bg-slate-100 !py-3 px-2 font-bold" title="${esc(e.name)} (${esc(e.category)})">`;
-   matrixHtml += `<div class="text-[#146b8c] font-extrabold">${esc(e.no)}</div>`;
-   matrixHtml += `<div class="text-[10px] text-slate-500 font-normal truncate max-w-[80px]">${esc(e.name)}</div>`;
-   matrixHtml += `<div class="text-[9px] text-slate-400 font-semibold">${esc(e.category)}</div>`;
-   matrixHtml += `</th>`;
+ activeHouses.forEach(h => {
+   const hStyle = houseStyle[h] || ['#334155', '#f1f5f9'];
+   matrixHtml += `<th class="text-center bg-slate-100 !py-2 px-2 font-bold border-l border-slate-200" colspan="3" style="color:${hStyle[0]}; background:${hStyle[1]}">RUMAH ${h.toUpperCase()}</th>`;
+ });
+ matrixHtml += `</tr><tr>`;
+
+ activeHouses.forEach(() => {
+   matrixHtml += `<th class="text-center bg-amber-50 text-amber-700 !py-2 px-2 border-l border-slate-200">Emas</th>`;
+   matrixHtml += `<th class="text-center bg-slate-50 text-slate-500 !py-2 px-2">Perak</th>`;
+   matrixHtml += `<th class="text-center bg-orange-50 text-orange-700 !py-2 px-2">Gangsa</th>`;
  });
  matrixHtml += `</tr></thead><tbody>`;
 
- activeHouses.forEach(h => {
-   const hStyle = houseStyle[h] || ['#334155', '#f1f5f9'];
-   
+ sortedEvents.forEach(e => {
    matrixHtml += `<tr class="hover:bg-slate-50">`;
-   matrixHtml += `<td class="font-extrabold sticky left-0 z-10" style="background:${hStyle[1]}; color:${hStyle[0]}"><span class="inline-block px-2 py-1 rounded" style="background:${hStyle[0]}; color:#fff">${h.toUpperCase()}</span> <div class="text-[10px] text-slate-500 mt-0.5">Emas</div></td>`;
-   sortedEvents.forEach(e => {
-     const count = medalsByHouseEvent[h][e.id].Emas;
-     matrixHtml += `<td class="text-center bg-white border-l border-slate-100">${count > 0 ? `<span class="text-amber-500 font-bold">🥇${count}</span>` : `<span class="text-slate-200">-</span>`}</td>`;
-   });
-   matrixHtml += `</tr>`;
+   matrixHtml += `<td class="font-extrabold sticky left-0 z-10 bg-white border-r border-slate-200">`;
+   matrixHtml += `<div class="text-[#146b8c] font-extrabold">${esc(e.no)} · <span class="text-slate-700">${esc(e.name)}</span></div>`;
+   matrixHtml += `<div class="text-[10px] text-slate-400 font-semibold">${esc(e.category)} (${esc(e.type)})</div>`;
+   matrixHtml += `</td>`;
 
-   matrixHtml += `<tr class="hover:bg-slate-50">`;
-   matrixHtml += `<td class="font-semibold text-slate-600 sticky left-0 z-10 bg-white pl-4 text-[11px]">Perak</td>`;
-   sortedEvents.forEach(e => {
-     const count = medalsByHouseEvent[h][e.id].Perak;
-     matrixHtml += `<td class="text-center bg-white border-l border-slate-100">${count > 0 ? `<span class="text-slate-400 font-bold">🥈${count}</span>` : `<span class="text-slate-200">-</span>`}</td>`;
-   });
-   matrixHtml += `</tr>`;
-
-   matrixHtml += `<tr class="hover:bg-slate-50 border-b border-slate-200">`;
-   matrixHtml += `<td class="font-semibold text-slate-600 sticky left-0 z-10 bg-white pl-4 text-[11px]">Gangsa</td>`;
-   sortedEvents.forEach(e => {
-     const count = medalsByHouseEvent[h][e.id].Gangsa;
-     matrixHtml += `<td class="text-center bg-white border-l border-slate-100">${count > 0 ? `<span class="text-orange-700 font-bold">🥉${count}</span>` : `<span class="text-slate-200">-</span>`}</td>`;
+   activeHouses.forEach(h => {
+     const m = medalsByEventHouse[e.id][h];
+     matrixHtml += `<td class="text-center bg-amber-50/20 border-l border-slate-100">${m.Emas > 0 ? `<span class="text-amber-600 font-bold">${m.Emas}</span>` : `<span class="text-slate-300">-</span>`}</td>`;
+     matrixHtml += `<td class="text-center bg-white">${m.Perak > 0 ? `<span class="text-slate-500 font-bold">${m.Perak}</span>` : `<span class="text-slate-300">-</span>`}</td>`;
+     matrixHtml += `<td class="text-center bg-orange-50/20">${m.Gangsa > 0 ? `<span class="text-orange-700 font-bold">${m.Gangsa}</span>` : `<span class="text-slate-300">-</span>`}</td>`;
    });
    matrixHtml += `</tr>`;
  });
@@ -1176,7 +1176,7 @@ function renderStandings(){
   <div class="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
     <div>
       <h3 class="font-extrabold text-[#10243e]">Matriks Semakan Pungutan Pingat</h3>
-      <p class="text-sm text-slate-500">Pecahan pingat yang dimenangi oleh rumah sukan bagi setiap acara mengikut kategori (Disusun mengikut nombor acara).</p>
+      <p class="text-sm text-slate-500">Pecahan pingat mengikut Rumah Sukan di atas kolum dan Acara di baris (Disusun mengikut nombor acara tanpa mengambil kira huruf depan).</p>
     </div>
   </div>
   ${matrixHtml}
