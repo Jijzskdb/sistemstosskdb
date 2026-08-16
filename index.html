@@ -1100,11 +1100,10 @@ function renderStandings(){
  const champs = { l9: getChamp('Lelaki', 'B9'), p9: getChamp('Perempuan', 'B9'), l12: getChamp('Lelaki', 'B12'), p12: getChamp('Perempuan', 'B12') };
 
  // ==========================================
- // KOD JADUAL MATRIKS BAHARU (Rumah Sukan di Atas Kolum, Acara di Baris, Susunan No Acara Abai Huruf Depan)
+ // KOD JADUAL MATRIKS (Kolum Diberikan Lebar Padat & Angka Diperbesar)
  // ==========================================
  const activeHouses = state.settings.houses || houses;
  
- // Susun acara mengikut nombor acara dengan mengabaikan huruf hadapan (mengambil angka sahaja)
  const sortedEvents = [...state.events].sort((a, b) => {
    const getNum = str => {
      const match = String(str || '').match(/\d+/);
@@ -1131,33 +1130,33 @@ function renderStandings(){
 
  let matrixHtml = `<div class="table-wrap overflow-x-auto"><table class="data-table text-xs whitespace-nowrap">`;
  matrixHtml += `<thead><tr>`;
- matrixHtml += `<th class="w-40 bg-slate-100 !py-3 sticky left-0 z-20 border-r border-slate-200" rowspan="2">ACARA</th>`;
+ matrixHtml += `<th class="w-44 bg-slate-100 !py-3 sticky left-0 z-20 border-r border-slate-200" rowspan="2">ACARA</th>`;
  
  activeHouses.forEach(h => {
    const hStyle = houseStyle[h] || ['#334155', '#f1f5f9'];
-   matrixHtml += `<th class="text-center bg-slate-100 !py-2 px-2 font-bold border-l border-slate-200" colspan="3" style="color:${hStyle[0]}; background:${hStyle[1]}">RUMAH ${h.toUpperCase()}</th>`;
+   matrixHtml += `<th class="text-center bg-slate-100 !py-2 px-1 font-bold border-l border-slate-200" colspan="3" style="color:${hStyle[0]}; background:${hStyle[1]}">RUMAH ${h.toUpperCase()}</th>`;
  });
  matrixHtml += `</tr><tr>`;
 
  activeHouses.forEach(() => {
-   matrixHtml += `<th class="text-center bg-amber-50 text-amber-700 !py-2 px-2 border-l border-slate-200">Emas</th>`;
-   matrixHtml += `<th class="text-center bg-slate-50 text-slate-500 !py-2 px-2">Perak</th>`;
-   matrixHtml += `<th class="text-center bg-orange-50 text-orange-700 !py-2 px-2">Gangsa</th>`;
+   matrixHtml += `<th class="text-center bg-amber-50 text-amber-700 !py-2 px-1 w-12 border-l border-slate-200">Emas</th>`;
+   matrixHtml += `<th class="text-center bg-slate-50 text-slate-500 !py-2 px-1 w-12">Perak</th>`;
+   matrixHtml += `<th class="text-center bg-orange-50 text-orange-700 !py-2 px-1 w-12">Gangsa</th>`;
  });
  matrixHtml += `</tr></thead><tbody>`;
 
  sortedEvents.forEach(e => {
    matrixHtml += `<tr class="hover:bg-slate-50">`;
-   matrixHtml += `<td class="font-extrabold sticky left-0 z-10 bg-white border-r border-slate-200">`;
+   matrixHtml += `<td class="font-extrabold sticky left-0 z-10 bg-white border-r border-slate-200 py-3">`;
    matrixHtml += `<div class="text-[#146b8c] font-extrabold">${esc(e.no)} · <span class="text-slate-700">${esc(e.name)}</span></div>`;
    matrixHtml += `<div class="text-[10px] text-slate-400 font-semibold">${esc(e.category)} (${esc(e.type)})</div>`;
    matrixHtml += `</td>`;
 
    activeHouses.forEach(h => {
      const m = medalsByEventHouse[e.id][h];
-     matrixHtml += `<td class="text-center bg-amber-50/20 border-l border-slate-100">${m.Emas > 0 ? `<span class="text-amber-600 font-bold">${m.Emas}</span>` : `<span class="text-slate-300">-</span>`}</td>`;
-     matrixHtml += `<td class="text-center bg-white">${m.Perak > 0 ? `<span class="text-slate-500 font-bold">${m.Perak}</span>` : `<span class="text-slate-300">-</span>`}</td>`;
-     matrixHtml += `<td class="text-center bg-orange-50/20">${m.Gangsa > 0 ? `<span class="text-orange-700 font-bold">${m.Gangsa}</span>` : `<span class="text-slate-300">-</span>`}</td>`;
+     matrixHtml += `<td class="text-center bg-amber-50/20 border-l border-slate-100 py-3">${m.Emas > 0 ? `<span class="text-amber-600 font-black text-base">${m.Emas}</span>` : `<span class="text-slate-300 font-bold">-</span>`}</td>`;
+     matrixHtml += `<td class="text-center bg-white py-3">${m.Perak > 0 ? `<span class="text-slate-500 font-black text-base">${m.Perak}</span>` : `<span class="text-slate-300 font-bold">-</span>`}</td>`;
+     matrixHtml += `<td class="text-center bg-orange-50/20 py-3">${m.Gangsa > 0 ? `<span class="text-orange-700 font-black text-base">${m.Gangsa}</span>` : `<span class="text-slate-300 font-bold">-</span>`}</td>`;
    });
    matrixHtml += `</tr>`;
  });
