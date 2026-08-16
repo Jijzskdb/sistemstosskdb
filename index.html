@@ -186,8 +186,17 @@ function switchView(v){
 }
 function calc(){
  const results=state.results||[], regs=state.registrations||[], students=state.students||[];
- const standing=houses.map(h=>{const ids=new Set(students.filter(s=>s.house===h).map(s=>s.id));const rr=results.filter(r=>ids.has(r.studentId) && r.stage === 'final');
- return {house:h,gold:rr.filter(r=>r.medal==='Emas').length,silver:rr.filter(r=>r.medal==='Perak').length,bronze:rr.filter(r=>r.medal==='Gangsa').length,points:rr.reduce((a,r)=>a+(+r.points||0),0)}});
+ const standing=houses.map(h=>{
+   const ids=new Set(students.filter(s=>s.house===h).map(s=>s.id));
+   const rr=results.filter(r=>(ids.has(r.studentId) || r.house === h) && r.stage === 'final');
+   return {
+     house:h,
+     gold:rr.filter(r=>r.medal==='Emas').length,
+     silver:rr.filter(r=>r.medal==='Perak').length,
+     bronze:rr.filter(r=>r.medal==='Gangsa').length,
+     points:rr.reduce((a,r)=>a+(+r.points||0),0)
+   };
+ });
  standing.sort((a,b)=>b.gold-a.gold||b.silver-a.silver||b.bronze-a.bronze||b.points-a.points);
  return {standing,active:new Set(regs.map(r=>r.studentId)),completed:state.events.filter(e=>e.status==='Selesai').length};
 }
@@ -1099,9 +1108,6 @@ function renderStandings(){
 
  const champs = { l9: getChamp('Lelaki', 'B9'), p9: getChamp('Perempuan', 'B9'), l12: getChamp('Lelaki', 'B12'), p12: getChamp('Perempuan', 'B12') };
 
- // ==========================================
- // KOD JADUAL MATRIKS (Kolum Diberikan Lebar Padat & Angka Diperbesar)
- // ==========================================
  const activeHouses = state.settings.houses || houses;
  
  const sortedEvents = [...state.events].sort((a, b) => {
@@ -1123,8 +1129,9 @@ function renderStandings(){
  state.results.filter(r => r.stage === 'final' && ['Emas','Perak','Gangsa'].includes(r.medal)).forEach(r => {
    const e = state.events.find(x => x.id === r.eventId);
    const s = state.students.find(x => x.id === r.studentId);
-   if (e && s && medalsByEventHouse[e.id] && medalsByEventHouse[e.id][s.house]) {
-     medalsByEventHouse[e.id][s.house][r.medal]++;
+   const hName = s ? s.house : r.house;
+   if (e && hName && medalsByEventHouse[e.id] && medalsByEventHouse[e.id][hName]) {
+     medalsByEventHouse[e.id][hName][r.medal]++;
    }
  });
 
@@ -1162,7 +1169,6 @@ function renderStandings(){
  });
 
  matrixHtml += `</tbody></table></div>`;
- // ==========================================
 
  return `${pageHead('Kedudukan Pingat','Susunan: Emas, Perak, Gangsa, kemudian jumlah mata.',actionAlways('Cetak Kedudukan','printer','pdf-standings','btn-primary'))}
  
@@ -2161,7 +2167,7 @@ function openJudge(eventId){
 
       entries.forEach((x, i) => {
         const rank = i + 1, medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '', points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
-        state.results.push({id: uid('x'), eventId, studentId: x.repStudent.id, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
+        state.results.push({id: uid('x'), eventId, studentId: x.repStudent.id, house: x.house, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
       });
       e.status = 'Selesai';
       await saveTypes(['results', 'events']);
@@ -2251,7 +2257,7 @@ function openJudge(eventId){
            const rank = i + 1;
            const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
            const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
-           state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
+           state.results.push({id: uid('x'), eventId, studentId: x.s.id, house: x.s.house, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
          });
          e.status = 'Selesai';
          toast('Keputusan Akhir berjaya disimpan!');
@@ -2259,7 +2265,7 @@ function openJudge(eventId){
          state.results = state.results.filter(r => r.eventId !== eventId || r.stage !== 'heat');
          entries.forEach(x => {
            if(x.value !== '') {
-             state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank: 0, status: x.status, medal: '', points: 0, stage: 'heat'});
+             state.results.push({id: uid('x'), eventId, studentId: x.s.id, house: x.s.house, value: x.value, rank: 0, status: x.status, medal: '', points: 0, stage: 'heat'});
            }
          });
 
@@ -2276,7 +2282,7 @@ function openJudge(eventId){
              const rank = i + 1;
              const medal = rank === 1 ? 'Emas' : rank === 2 ? 'Perak' : rank === 3 ? 'Gangsa' : '';
              const points = rank === 1 ? 5 : rank === 2 ? 3 : rank === 3 ? 1 : 0;
-             state.results.push({id: uid('x'), eventId, studentId: x.s.id, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
+             state.results.push({id: uid('x'), eventId, studentId: x.s.id, house: x.s.house, value: x.value, rank, status: x.status, medal, points, stage: 'final'});
            });
            e.status = 'Selesai';
            toast('Keputusan Separuh Akhir & Peringkat Akhir Disimpan!');
@@ -2326,6 +2332,7 @@ function openJudge(eventId){
           id: uid('x'),
           eventId,
           studentId: x.s.id,
+          house: x.s.house,
           value,
           rank,
           status: 'SAH',
@@ -2371,6 +2378,7 @@ function openJudge(eventId){
               id: uid('x'),
               eventId,
               studentId: x.s.id,
+              house: x.s.house,
               attempts: x.attempts,
               value: x.value,
               rank,
